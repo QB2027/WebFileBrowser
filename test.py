@@ -12,7 +12,7 @@ data = b'this is a test'
 # 使用公钥加密，私钥解密
 encrypted = encrypt(pubhex, data)
 decrypted = decrypt(prvhex, encrypted)
-print(f"pubhex"{pubhex}")
+print(f"pubhex{pubhex}")
 print(f"prvhex{prvhex}")
 
 # 输出解密后的消息
