@@ -14,7 +14,7 @@ auth = oss2.Auth(access_key_id, access_key_secret)
 bucket = oss2.Bucket(auth, endpoint, bucket_name)
 
 # 要扫描的目录前缀
-prefix = 'files/'
+prefix = '/'
 
 # 获取所有文件列表
 file_list = []
