@@ -4,112 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件解密系统</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl-util/1.0.1/nacl-util.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 0;
-        }
-        label, input, button {
-            display: block;
-            margin-bottom: 15px;
-        }
-        pre {
-            background: #f4f4f4;
-            padding: 10px;
-            border: 1px solid #ccc;
-            overflow-x: auto;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <h1>文件解密系统</h1>
 
-    <label for="username">用户名：</label>
-    <input type="text" id="username" placeholder="请输入用户名">
+    <div class="form-container">
+        <label for="username">用户名：</label>
+        <input type="text" id="username" placeholder="请输入用户名">
 
-    <label for="password">密码：</label>
-    <input type="password" id="password" placeholder="请输入密码">
+        <label for="password">密码：</label>
+        <input type="password" id="password" placeholder="请输入密码">
 
-    <button onclick="decryptFiles()">解密文件列表</button>
+        <button onclick="decryptFiles()">解密文件列表</button>
+    </div>
 
     <h2>文件列表：</h2>
     <pre id="output">请填写用户名和密码后点击“解密文件列表”</pre>
 
-    <script>
-        async function decryptFiles() {
-            const username = document.getElementById("username").value.trim();
-            const password = document.getElementById("password").value;
-
-            if (!username || !password) {
-                document.getElementById("output").textContent = "请填写用户名和密码！";
-                return;
-            }
-
-            try {
-                // 根据密码生成私钥
-                const seed = generateSeed(password);
-                const keyPair = nacl.sign.keyPair.fromSeed(seed);
-
-                // 加载加密的文件列表
-                const encryptedFilesResponse = await fetch("files.json.enc");
-                const encryptedFiles = await encryptedFilesResponse.text();
-
-                // 加载加密的 AES 密钥片段
-                const encryptedKeysResponse = await fetch("encrypted_keys.json");
-                const encryptedKeys = await encryptedKeysResponse.json();
-
-                // 检查用户的加密 AES 密钥片段
-                const encryptedKey = encryptedKeys[username];
-                if (!encryptedKey) {
-                    document.getElementById("output").textContent = "用户不存在或没有对应的加密密钥片段！";
-                    return;
-                }
-
-                // 解密 AES 密钥
-                const aesKey = decryptRSA(keyPair.secretKey, encryptedKey);
-
-                // 解密文件列表
-                const files = decryptAES(encryptedFiles, aesKey);
-
-                // 显示解密后的文件列表
-                document.getElementById("output").textContent = JSON.stringify(files, null, 2);
-            } catch (error) {
-                console.error(error);
-                document.getElementById("output").textContent = "解密失败，请检查用户名和密码是否正确！";
-            }
-        }
-
-        function generateSeed(password) {
-            /**
-             * 根据用户密码生成固定种子（SHA-256 哈希）
-             */
-            const encoder = new TextEncoder();
-            const data = encoder.encode(password);
-            const hashBuffer = nacl.hash(data);
-            return new Uint8Array(hashBuffer.slice(0, 32));
-        }
-
-        function decryptRSA(secretKey, encryptedKey) {
-            /**
-             * 使用 Ed25519 私钥解密加密的 AES 密钥
-             */
-            const encryptedKeyBytes = nacl.util.decodeBase64(encryptedKey);
-            const decrypted = nacl.sign.open(encryptedKeyBytes, secretKey);
-            if (!decrypted) {
-                throw new Error("解密失败！");
-            }
-            return nacl.util.encodeUTF8(decrypted);
-        }
-
-        function decryptAES(encryptedData, aesKey) {
-            /**
-             * 模拟 AES 解密文件列表（需替换为实际 AES 解密逻辑）
-             */
-            return JSON.parse(atob(encryptedData));
-        }
-    </script>
+    <script src="nacl.min.js"></script>
+    <script src="nacl-util.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
