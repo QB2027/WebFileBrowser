@@ -34,12 +34,14 @@
     <label for="password">密码：</label>
     <input type="password" id="password" placeholder="请输入密码">
 
-    <button onclick="decryptFiles()">解密文件列表</button>
+    <button id="decryptButton">解密文件列表</button>
 
     <h2>文件列表：</h2>
     <pre id="output">请填写用户名和密码后点击“解密文件列表”</pre>
 
     <script>
+        document.getElementById("decryptButton").addEventListener("click", decryptFiles);
+
         async function decryptFiles() {
             const username = document.getElementById("username").value.trim();
             const password = document.getElementById("password").value;
