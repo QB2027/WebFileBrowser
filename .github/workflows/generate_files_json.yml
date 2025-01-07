@@ -1,12 +1,14 @@
+# .github/workflows/generate_files_json.yml
+
 name: Generate files.json
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     - cron: '0 * * * *'  # 每小时运行一次
   workflow_dispatch:  # 允许手动触发
+  push:
+    branches:
+      - main
 
 jobs:
   generate-files:
