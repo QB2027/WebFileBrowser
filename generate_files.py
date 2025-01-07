@@ -19,16 +19,20 @@ def load_config():
 
 def load_aes_key():
     """
-    从环境变量中加载 AES 密钥
+    从环境变量中加载 Base64 编码的 AES 密钥，并解码为原始 32 字节密钥
     """
     encryption_password = os.getenv("ENCRYPTION_PASSWORD")
     if not encryption_password:
         raise ValueError("环境变量 ENCRYPTION_PASSWORD 未设置")
 
-    # 确保 AES 密钥长度为 32 字节（256 位）
-    key = encryption_password.encode("utf-8")
+    try:
+        # 尝试将 Base64 编码的密钥解码为原始字节
+        key = base64.b64decode(encryption_password)
+    except Exception:
+        raise ValueError("无法解码 ENCRYPTION_PASSWORD，请确保它是 Base64 编码的字符串")
+
     if len(key) != 32:
-        raise ValueError("AES 密钥必须为 32 字节（256 位）")
+        raise ValueError("解码后的 AES 密钥必须为 32 字节（256 位）")
     return key
 
 
