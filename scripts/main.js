@@ -1,6 +1,5 @@
 // scripts/main.js
 
-import { loadDirectory } from './directory.js';
 import { decryptData } from './cryptoUtils.js';
 
 let currentPath = ''; // 当前目录路径
@@ -24,7 +23,7 @@ async function login() {
 
     // 验证用户名和密码
     if (users[username] && users[username] === hashedPassword) {
-      // 存储登录状态
+      // 存储登录状态和加密密码
       localStorage.setItem('authToken', 'authenticated');
       localStorage.setItem('encryptionPassword', password); // 存储密码用于解密
 
@@ -168,7 +167,7 @@ function init() {
     // 获取当前 URL 中 ?path= 指定的目录路径
     const params = new URLSearchParams(window.location.search);
     currentPath = params.get('path') || '';
-    loadDirectory(currentPath, updatePath);
+    fetchFiles();
   }
 }
 
