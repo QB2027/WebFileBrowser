@@ -22,7 +22,7 @@
       border: 1px solid #ddd;
       border-radius: 5px;
       max-width: 400px;
-      margin: 0 auto;
+      margin: 20px auto;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
@@ -123,8 +123,10 @@
     <button id="logout-button">登出</button>
   </div>
 
-  <!-- 引入主脚本 -->
-  <script type="module">
+  <!-- 主脚本 -->
+  <script>
+    let currentPath = ''; // 当前目录路径
+
     /**
      * 解密数据
      * @param {string} encryptedData - Base64编码的加密数据（包含盐和IV）
@@ -263,8 +265,9 @@
 
     /**
      * 获取并展示文件列表
+     * @param {string} password - 用户密码
      */
-    async function fetchFiles() {
+    async function fetchFiles(password) {
       try {
         const response = await fetch('files.json.enc');
         if (!response.ok) {
@@ -272,14 +275,8 @@
         }
         const encryptedData = await response.text();
 
-        // 获取加密密码
-        const encryptionPassword = localStorage.getItem('encryptionPassword');
-        if (!encryptionPassword) {
-          throw new Error('加密密码缺失');
-        }
-
         // 解密数据
-        const decryptedData = await decryptData(encryptedData, encryptionPassword);
+        const decryptedData = await decryptData(encryptedData, password);
         const files = JSON.parse(decryptedData);
 
         displayFiles(files, currentPath);
@@ -318,16 +315,15 @@
 
         // 验证用户名和密码
         if (users[username] && users[username] === hashedPassword) {
-          // 存储登录状态和加密密码
+          // 存储登录状态
           localStorage.setItem('authToken', 'authenticated');
-          localStorage.setItem('encryptionPassword', password); // 存储密码用于解密
 
           // 隐藏登录表单，显示下载区域
           document.getElementById('login-form').style.display = 'none';
           document.getElementById('download-section').style.display = 'block';
 
           // 获取并展示文件列表
-          await fetchFiles();
+          await fetchFiles(password);
 
           // 更新面包屑导航
           updateBreadcrumb('');
@@ -367,7 +363,16 @@
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('download-section').style.display = 'block';
         // 获取并展示文件列表
-        fetchFiles();
+        // 此时需要用户密码，建议用户重新输入密码或存储在安全地方
+        // 为简化，假设密码存储在 localStorage（不推荐）
+        const encryptionPassword = localStorage.getItem('encryptionPassword');
+        if (encryptionPassword) {
+          fetchFiles(encryptionPassword);
+        } else {
+          // 提示用户重新登录或输入密码
+          alert('请重新登录以获取解密密码。');
+          logout();
+        }
       }
 
       // 绑定登录按钮的点击事件
