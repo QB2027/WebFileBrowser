@@ -1,22 +1,105 @@
-import { loadConfig } from './config.js';
-import { loadDirectory } from './directory.js';
-import { getCurrentDirectory } from './utils.js';
+// scripts/main.js
 
-async function init() {
+// 登录函数
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const errorMessage = document.getElementById('error-message');
+
   try {
-    // 加载 GitHub 仓库配置信息
-    await loadConfig();
-    
-    // 获取当前 URL 中 ?path= 指定的目录路径
-    const currentDirectory = getCurrentDirectory();
-    
-    // 加载并展示当前目录内容
-    await loadDirectory(currentDirectory);
+    // 获取 users.json
+    const usersResponse = await fetch('users.json');
+    if (!usersResponse.ok) {
+      throw new Error('无法加载用户数据');
+    }
+    const users = await usersResponse.json();
+
+    // 使用 SHA-256 对输入密码进行哈希
+    const hashedPassword = await sha256(password);
+
+    // 验证用户名和密码
+    if (users[username] && users[username] === hashedPassword) {
+      // 存储登录状态
+      localStorage.setItem('authToken', 'authenticated');
+
+      // 隐藏登录表单，显示下载区域
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('download-section').style.display = 'block';
+
+      // 获取并展示文件列表
+      await fetchFiles();
+    } else {
+      errorMessage.innerText = '用户名或密码错误';
+    }
   } catch (error) {
     console.error('Error:', error);
-    document.querySelector('.file-list').innerHTML = '<li>Error loading directory.</li>';
+    errorMessage.innerText = '登录时出错，请稍后再试';
   }
 }
 
-// 初始化
-init();
+// 登出函数
+function logout() {
+  // 清除登录状态
+  localStorage.removeItem('authToken');
+
+  // 隐藏下载区域，显示登录表单
+  document.getElementById('download-section').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+}
+
+// 获取并展示文件列表
+async function fetchFiles() {
+  try {
+    const response = await fetch('files.json');
+    if (!response.ok) {
+      throw new Error('无法加载文件列表');
+    }
+    const files = await response.json();
+    displayFiles(files);
+  } catch (error) {
+    console.error('Error:', error);
+    document.querySelector('.file-list').innerHTML = '<li>加载文件列表时出错。</li>';
+  }
+}
+
+// 显示文件列表
+function displayFiles(files) {
+  const container = document.querySelector('.file-list');
+  container.innerHTML = '';
+
+  files.forEach(item => {
+    if (item.type === 'file') {
+      container.innerHTML += `<li class="file-item"><a href="${item.url}" target="_blank">${item.name}</a></li>`;
+    }
+  });
+}
+
+// SHA-256 哈希函数
+async function sha256(message) {
+  // 转换为 UTF-8 编码
+  const msgBuffer = new TextEncoder().encode(message);
+  // 进行哈希
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  // 转换为十六进制字符串
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+// 初始化页面
+function init() {
+  const authToken = localStorage.getItem('authToken');
+  if (authToken === 'authenticated') {
+    // 如果已登录，显示下载区域
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('download-section').style.display = 'block';
+    fetchFiles();
+  }
+}
+
+// 监听认证状态变化
+window.login = login;
+window.logout = logout;
+
+// 初始化页面加载
+window.onload = init;
