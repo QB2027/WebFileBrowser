@@ -2,13 +2,31 @@
   {
     "name": "版权原因，目前不得上传文件.txt",
     "path": "study/版权原因，目前不得上传文件.txt",
-    "url": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/study%2F%E7%89%88%E6%9D%83%E5%8E%9F%E5%9B%A0%EF%BC%8C%E7%9B%AE%E5%89%8D%E4%B8%8D%E5%BE%97%E4%B8%8A%E4%BC%A0%E6%96%87%E4%BB%B6.txt?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736233528&Signature=4V8uZhNQSfLrtwEuJKfSlQ673gc%3D",
+    "url": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/study%2F%E7%89%88%E6%9D%83%E5%8E%9F%E5%9B%A0%EF%BC%8C%E7%9B%AE%E5%89%8D%E4%B8%8D%E5%BE%97%E4%B8%8A%E4%BC%A0%E6%96%87%E4%BB%B6.txt?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736233672&Signature=7pVb70ri5tI%2Fu0tKJKI28VPNImE%3D",
     "type": "file"
   },
   {
     "name": "test1.txt",
     "path": "test/jasonxue/test1.txt",
-    "url": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/test%2Fjasonxue%2Ftest1.txt?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736233528&Signature=tPVtl%2FQ6uW%2BsyuW5pQYb4bp4o98%3D",
+    "url": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/test%2Fjasonxue%2Ftest1.txt?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736233672&Signature=CXkIr54y2tW00h5dVxYEtbuOU4Q%3D",
     "type": "file"
+  },
+  {
+    "name": "test",
+    "path": "test/",
+    "url": "",
+    "type": "folder"
+  },
+  {
+    "name": "study",
+    "path": "study/",
+    "url": "",
+    "type": "folder"
+  },
+  {
+    "name": "jasonxue",
+    "path": "test/jasonxue/",
+    "url": "",
+    "type": "folder"
   }
 ]
