@@ -2,8 +2,9 @@ name: Generate Files JSON
 
 on:
   push:
+    workflow_dispatch:
     branches:
-      - master  # 或你的主要分支名称
+      - main
 
 jobs:
   build:
