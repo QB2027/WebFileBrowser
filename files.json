@@ -1,40 +1,15 @@
 [
   {
-    "name": "test",
-    "type": "directory",
-    "path": "test",
-    "children": [
-      {
-        "name": "test1",
-        "type": "directory",
-        "path": "test/jasonxue/test1",
-        "children": []
-      },
-      {
-        "name": "test2",
-        "type": "directory",
-        "path": "test/jasonxue/test2",
-        "children": []
-      }
-    ]
-  },
-  {
-    "name": "test",
-    "type": "directory",
-    "path": "test",
-    "children": []
-  },
-  {
     "name": "study",
     "type": "directory",
     "path": "study",
-    "children": []
-  },
-  {
-    "name": "test",
-    "type": "directory",
-    "path": "test",
-    "children": []
+    "children": [
+      {
+        "name": "版权原因，目前不得上传文件.txt",
+        "type": "file",
+        "path": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/study%2F%E7%89%88%E6%9D%83%E5%8E%9F%E5%9B%A0%EF%BC%8C%E7%9B%AE%E5%89%8D%E4%B8%8D%E5%BE%97%E4%B8%8A%E4%BC%A0%E6%96%87%E4%BB%B6.txt?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736244362&Signature=XcbOLXL%2Fyuo%2FVtKsufz%2F%2Fmo%2BgN8%3D"
+      }
+    ]
   },
   {
     "name": "test",
@@ -47,30 +22,45 @@
         "path": "test/jasonxue",
         "children": [
           {
+            "name": "1.py",
+            "type": "file",
+            "path": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/test%2Fjasonxue%2F1.py?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736244362&Signature=3TgPF%2BX7EbEm1MEVjfq5VChwAu0%3D"
+          },
+          {
+            "name": "test1.txt",
+            "type": "file",
+            "path": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/test%2Fjasonxue%2Ftest1.txt?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736244362&Signature=xs8aFySZFiq8clYAsNti0QYvrZQ%3D"
+          },
+          {
             "name": "test1",
             "type": "directory",
             "path": "test/jasonxue/test1",
-            "children": []
+            "children": [
+              {
+                "name": "1.py",
+                "type": "file",
+                "path": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/test%2Fjasonxue%2Ftest1%2F1.py?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736244362&Signature=r%2F4uocVTjKbREOk0gKOHnt55KfY%3D"
+              }
+            ]
           },
           {
             "name": "test2",
             "type": "directory",
             "path": "test/jasonxue/test2",
-            "children": []
+            "children": [
+              {
+                "name": "1.py",
+                "type": "file",
+                "path": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/test%2Fjasonxue%2Ftest2%2F1.py?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736244362&Signature=d%2BTc78hYiCttdIredEt2NAtSBQw%3D"
+              },
+              {
+                "name": "2014A10.py",
+                "type": "file",
+                "path": "http://qb2027-files.oss-cn-shanghai.aliyuncs.com/test%2Fjasonxue%2Ftest2%2F2014A10.py?OSSAccessKeyId=LTAI5tCSuJQU3Hw5Lvz3m9po&Expires=1736244362&Signature=nqL3IPXb%2FilUjEBZ%2B7jUm3ZfB8g%3D"
+              }
+            ]
           }
         ]
-      },
-      {
-        "name": "jasonxue",
-        "type": "directory",
-        "path": "test/jasonxue",
-        "children": []
-      },
-      {
-        "name": "jasonxue",
-        "type": "directory",
-        "path": "test/jasonxue",
-        "children": []
       }
     ]
   }
