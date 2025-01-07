@@ -5,12 +5,24 @@
     "path": "test",
     "children": [
       {
-        "name": "jasonxue",
+        "name": "test1",
         "type": "directory",
-        "path": "test/jasonxue",
+        "path": "test/jasonxue/test1",
+        "children": []
+      },
+      {
+        "name": "test2",
+        "type": "directory",
+        "path": "test/jasonxue/test2",
         "children": []
       }
     ]
+  },
+  {
+    "name": "test",
+    "type": "directory",
+    "path": "test",
+    "children": []
   },
   {
     "name": "study",
@@ -23,5 +35,43 @@
     "type": "directory",
     "path": "test",
     "children": []
+  },
+  {
+    "name": "test",
+    "type": "directory",
+    "path": "test",
+    "children": [
+      {
+        "name": "jasonxue",
+        "type": "directory",
+        "path": "test/jasonxue",
+        "children": [
+          {
+            "name": "test1",
+            "type": "directory",
+            "path": "test/jasonxue/test1",
+            "children": []
+          },
+          {
+            "name": "test2",
+            "type": "directory",
+            "path": "test/jasonxue/test2",
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "jasonxue",
+        "type": "directory",
+        "path": "test/jasonxue",
+        "children": []
+      },
+      {
+        "name": "jasonxue",
+        "type": "directory",
+        "path": "test/jasonxue",
+        "children": []
+      }
+    ]
   }
 ]
