@@ -106,15 +106,15 @@ function displayFiles(files, path) {
   const items = files.filter(item => {
     const itemPath = item.path;
     if (currentPath === '') {
-      return !itemPath.includes('/') || itemPath.indexOf('/') === itemPath.length - 1;
+      return !itemPath.includes('/') || itemPath.endsWith('/');
     }
-    return itemPath.startsWith(currentPath) && itemPath.split('/').filter(part => part).length === currentPath.split('/').filter(part => part).length + (item.type === 'folder' ? 1 : 0);
+    return itemPath.startsWith(currentPath) && (itemPath.split('/').filter(part => part).length === currentPath.split('/').filter(part => part).length + (item.type === 'folder' ? 1 : 0));
   });
 
   // 处理文件夹和文件
   items.forEach(item => {
     const listItem = document.createElement('li');
-    listItem.classList.add('file-item');
+    listItem.classList.add(item.type === 'folder' ? 'directory-item' : 'file-item');
 
     if (item.type === 'folder') {
       listItem.innerHTML = `<span class="folder" data-path="${item.path}">📁 ${item.name}</span>`;
