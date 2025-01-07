@@ -40,28 +40,28 @@ def load_aes_key():
 
 def encrypt_aes(data, key):
     """
-    使用 AES 加密数据
+    使用 AES 加密数据，并以16进制字符串形式返回结果
     """
     iv = secrets.token_bytes(16)  # 随机生成 IV
     cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
     encryptor = cipher.encryptor()
     encrypted_data = encryptor.update(data.encode("utf-8")) + encryptor.finalize()
-    return base64.b64encode(iv + encrypted_data).decode("utf-8")
+    # 以16进制形式返回 IV + 加密数据
+    return (iv + encrypted_data).hex()
 
 
 def encrypt_with_ecies(public_key_hex, aes_key):
     """
-    使用 ECIES 加密 AES 密钥
+    使用 ECIES 加密 AES 密钥，并以16进制字符串形式返回结果
     :param public_key_hex: 用户的 EC 公钥（16进制字符串）
     :param aes_key: AES 密钥（字节数据）
-    :return: Base64 编码的加密 AES 密钥
+    :return: 以16进制字符串表示的加密 AES 密钥
     """
     try:
         # 使用 ecies 库的公钥进行加密，public_key_hex 是16进制的字符串
         encrypted_aes_key = ecies.encrypt(public_key_hex, aes_key)
-
-        # 返回加密后的 AES 密钥（Base64 编码）
-        return base64.b64encode(encrypted_aes_key).decode("utf-8")
+        # 以16进制形式返回加密后的 AES 密钥
+        return encrypted_aes_key.hex()
 
     except Exception as e:
         raise ValueError(f"ECIES 加密失败，请检查公钥是否正确：{e}")
@@ -90,7 +90,6 @@ def scan_oss_bucket(bucket, prefix="", exclude_dirs=None, exclude_files=None):
         else:
             if name in exclude_files:
                 continue
-            file_path = "/".join(parts)
             signed_url = bucket.sign_url("GET", obj.key, 3600)  # 生成签名链接
             parent_path = "/".join(parts[:-1])
             if parent_path not in entries:
@@ -136,7 +135,7 @@ def main():
         aes_key = load_aes_key()
         encrypted_files = encrypt_aes(files_json, aes_key)
 
-        # 保存加密后的文件结构
+        # 保存加密后的文件结构，以16进制字符串形式存储
         with open("files.json.enc", "w", encoding="utf-8") as f:
             f.write(encrypted_files)
         print("加密后的文件列表已生成：files.json.enc")
@@ -154,7 +153,7 @@ def main():
             except ValueError as e:
                 print(f"跳过用户 {username} 的加密，原因：{e}")
 
-        # 保存加密的 AES 密钥片段
+        # 保存加密的 AES 密钥片段，以16进制字符串形式存储
         with open("encrypted_keys.json", "w", encoding="utf-8") as f:
             json.dump(encrypted_keys, f, ensure_ascii=False, indent=2)
         print("加密的 AES 密钥片段已生成：encrypted_keys.json")
