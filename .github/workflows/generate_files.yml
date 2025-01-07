@@ -1,48 +1,42 @@
-# .github/workflows/generate_files_json.yml
-
-name: Generate files.json.enc
+name: Generate Encrypted Files
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 每小时运行一次
-  workflow_dispatch:    # 允许手动触发
+    - cron: '0 0 * * *' # 每天运行一次
+  workflow_dispatch: # 支持手动触发
 
 jobs:
   generate-files:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Set Up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
+      - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install oss2 cryptography
 
-      - name: Generate files.json.enc
+      - name: Generate Encrypted Files
         env:
           OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
           ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
         run: |
-          python generate_files_json.py
+          python generate_files.py
 
-      - name: Check generated files
-        run: |
-          ls -la
-
-      - name: Commit and push files.json.enc
+      - name: Commit and Push Encrypted Files
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add files.json.enc
-          git commit -m "Update files.json.enc [skip ci]" || echo "No changes to commit"
+          git add files.json.enc encrypted_keys.json
+          git commit -m "Update encrypted files [skip ci]"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
