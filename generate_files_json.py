@@ -25,56 +25,40 @@ def scan_oss_bucket(bucket, prefix="", exclude_dirs=None, exclude_files=None):
     if exclude_files is None:
         exclude_files = set()
 
-    entries = []
-    folders = set()  # 用于记录所有目录
+    entries = {}
     objects = oss2.ObjectIterator(bucket, prefix=prefix)
 
     for obj in objects:
         # 文件和文件夹路径分割
-        path_parts = obj.key.split("/")
-        name = path_parts[-1] if not obj.key.endswith("/") else path_parts[-2]
+        parts = obj.key.strip("/").split("/")
+        name = parts[-1]
 
-        # 处理文件夹
         if obj.key.endswith("/"):
-            if name in exclude_dirs:
-                continue
-            folders.add(obj.key)
+            # 是文件夹
+            folder_path = "/".join(parts)
+            if folder_path not in entries:
+                entries[folder_path] = {"name": name, "type": "directory", "path": folder_path, "children": []}
         else:
-            # 处理文件
+            # 是文件
             if name in exclude_files:
                 continue
-            signed_url = bucket.sign_url('GET', obj.key, 3600)  # 为文件生成签名链接
-            entries.append({
-                "name": name,
-                "type": "file",
-                "path": signed_url
-            })
+            file_path = "/".join(parts)
+            signed_url = bucket.sign_url("GET", obj.key, 3600)  # 生成签名链接
+            parent_path = "/".join(parts[:-1])
+            if parent_path not in entries:
+                entries[parent_path] = {"name": parts[-2] if len(parts) > 1 else "", "type": "directory", "path": parent_path, "children": []}
+            entries[parent_path]["children"].append({"name": name, "type": "file", "path": signed_url})
 
-    # 递归生成目录结构
-    def build_tree(path):
-        children = []
+    # 按层级关系构建目录树
+    root = []
+    for entry in entries.values():
+        parent_path = "/".join(entry["path"].strip("/").split("/")[:-1])
+        if parent_path in entries:
+            entries[parent_path]["children"].append(entry)
+        else:
+            root.append(entry)
 
-        # 子目录处理
-        for folder in folders:
-            if folder.startswith(path) and folder != path:
-                folder_name = folder[len(path):].split("/")[0]
-                folder_key = os.path.join(path, folder_name).replace("\\", "/")
-                if folder_name not in exclude_dirs:
-                    children.append({
-                        "name": folder_name,
-                        "type": "directory",
-                        "path": folder_key,
-                        "children": build_tree(folder)
-                    })
-
-        # 添加文件
-        for entry in entries:
-            if entry["path"].startswith(path) and "/" not in entry["path"][len(path):]:
-                children.append(entry)
-
-        return children
-
-    return build_tree(prefix)
+    return root
 
 
 def main():
