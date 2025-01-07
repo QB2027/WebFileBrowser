@@ -1,104 +1,115 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>文件浏览器</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { text-align: center; }
-    .login-form, .file-list { margin: 0 auto; max-width: 600px; }
-    .file-list { list-style: none; padding: 0; }
-    .file-list li { margin: 10px 0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件解密系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        label, input, button {
+            display: block;
+            margin-bottom: 15px;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ccc;
+            overflow-x: auto;
+        }
+    </style>
 </head>
 <body>
-  <h1>文件浏览系统</h1>
-  <div class="login-form">
-    <label for="username">请输入用户名：</label>
-    <input type="text" id="username" placeholder="用户名"><br><br>
-    <label for="password">请输入密码：</label>
-    <input type="password" id="password" placeholder="密码"><br><br>
-    <button id="login-btn">登录</button>
-  </div>
-  <ul class="file-list" id="file-list" style="display:none;"></ul>
-  <script>
-    async function sha256(message) {
-      const msgBuffer = new TextEncoder().encode(message);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      return Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    }
+    <h1>文件解密系统</h1>
 
-    async function deriveKey(password, salt) {
-      const encoder = new TextEncoder();
-      const keyMaterial = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(password),
-        'PBKDF2',
-        false,
-        ['deriveKey']
-      );
+    <label for="username">用户名：</label>
+    <input type="text" id="username" placeholder="请输入用户名">
 
-      return await crypto.subtle.deriveKey(
-        {
-          name: 'PBKDF2',
-          hash: 'SHA-256',
-          salt: salt,
-          iterations: 100000
-        },
-        keyMaterial,
-        {
-          name: 'AES-CFB',
-          length: 256
-        },
-        false,
-        ['decrypt']
-      );
-    }
+    <label for="privateKey">私钥文件：</label>
+    <input type="file" id="privateKey">
 
-    async function decryptAES(ciphertext, key, iv) {
-      return await crypto.subtle.decrypt(
-        {
-          name: 'AES-CFB',
-          iv: iv
-        },
-        key,
-        ciphertext
-      );
-    }
+    <button onclick="decryptFiles()">解密文件列表</button>
 
-    document.getElementById('login-btn').addEventListener('click', async () => {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
+    <h2>文件列表：</h2>
+    <pre id="output">请上传私钥并输入用户名后点击“解密文件列表”</pre>
 
-      if (!username || !password) {
-        alert('请输入用户名和密码！');
-        return;
-      }
+    <script>
+        async function decryptFiles() {
+            const username = document.getElementById("username").value.trim();
+            const privateKeyFile = document.getElementById("privateKey").files[0];
 
-      try {
-        const encResponse = await fetch('files.json.enc');
-        const encText = await encResponse.text();
-        const encBytes = new Uint8Array(atob(encText).split('').map(c => c.charCodeAt(0)));
+            if (!username || !privateKeyFile) {
+                document.getElementById("output").textContent = "请填写用户名并上传私钥文件！";
+                return;
+            }
 
-        const salt = encBytes.slice(0, 16);
-        const iv = encBytes.slice(16, 32);
-        const ciphertext = encBytes.slice(32);
+            // 读取私钥文件
+            const privateKeyText = await privateKeyFile.text();
 
-        const key = await deriveKey(password, salt);
-        const decryptedData = await decryptAES(ciphertext, key, iv);
-        const files = JSON.parse(new TextDecoder().decode(decryptedData));
+            // 加载加密的文件列表
+            const encryptedFilesResponse = await fetch("files.json.enc");
+            const encryptedFiles = await encryptedFilesResponse.text();
 
-        document.querySelector('.login-form').style.display = 'none';
-        const fileList = document.getElementById('file-list');
-        fileList.style.display = 'block';
-        fileList.innerHTML = files.map(file => `<li>${file.name}</li>`).join('');
-      } catch (error) {
-        alert('解密失败，请检查密码是否正确。');
-      }
-    });
-  </script>
+            // 加载加密的 AES 密钥片段
+            const encryptedKeysResponse = await fetch("encrypted_keys.json");
+            const encryptedKeys = await encryptedKeysResponse.json();
+
+            // 检查用户的加密 AES 密钥片段
+            const encryptedKey = encryptedKeys[username];
+            if (!encryptedKey) {
+                document.getElementById("output").textContent = "用户不存在或没有对应的加密密钥片段！";
+                return;
+            }
+
+            try {
+                // 解密 AES 密钥
+                const aesKey = await decryptRSA(privateKeyText, encryptedKey);
+
+                // 解密文件列表
+                const files = decryptAES(encryptedFiles, aesKey);
+
+                // 显示解密后的文件列表
+                document.getElementById("output").textContent = JSON.stringify(files, null, 2);
+            } catch (error) {
+                document.getElementById("output").textContent = "解密失败，请检查用户名和私钥是否正确！";
+            }
+        }
+
+        async function decryptRSA(privateKeyPem, encryptedKey) {
+            // 使用 Web Crypto API 解密 RSA 密钥
+            const privateKey = await crypto.subtle.importKey(
+                "pkcs8",
+                decodeBase64(privateKeyPem),
+                { name: "RSA-OAEP", hash: "SHA-256" },
+                false,
+                ["decrypt"]
+            );
+            const decrypted = await crypto.subtle.decrypt(
+                { name: "RSA-OAEP" },
+                privateKey,
+                decodeBase64(encryptedKey)
+            );
+            return new Uint8Array(decrypted).reduce((str, byte) => str + String.fromCharCode(byte), "");
+        }
+
+        function decryptAES(encryptedData, aesKey) {
+            // 模拟解密 AES 数据（替换为实际 AES 解密逻辑）
+            return JSON.parse(atob(encryptedData));
+        }
+
+        function decodeBase64(base64) {
+            // 解码 Base64 字符串
+            const binaryString = atob(base64);
+            const binaryLength = binaryString.length;
+            const bytes = new Uint8Array(binaryLength);
+            for (let i = 0; i < binaryLength; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+    </script>
 </body>
 </html>
