@@ -23,9 +23,13 @@ def main():
         # 获取环境变量中的 OSS 凭证
         access_key_id = os.getenv(config['oss_access_key_id_env'])
         access_key_secret = os.getenv(config['oss_access_key_secret_env'])
+        encryption_password = os.getenv(config['encryption_password_env'])
 
         if not access_key_id or not access_key_secret:
             raise ValueError(f"{config['oss_access_key_id_env']} and {config['oss_access_key_secret_env']} must be set")
+
+        if not encryption_password:
+            raise ValueError(f"{config['encryption_password_env']} must be set")
 
         # 初始化 OSS Bucket
         auth = oss2.Auth(access_key_id, access_key_secret)
@@ -41,20 +45,14 @@ def main():
 
         print('files.json 已生成。')
 
-        # 读取用户信息并为每个用户生成加密文件
-        with open('users.json', 'r', encoding='utf-8') as f:
-            users = json.load(f)
+        # 加密文件
+        encrypted_files_json = encrypt_data('files.json', encryption_password, config)
 
-        for user_id, password_hash in users.items():
-            print(f"Encrypting files for user: {user_id}")
-            encrypted_files_json = encrypt_data('files.json', password_hash, config)
+        # 写入加密后的文件
+        with open('files.json.enc', 'w', encoding='utf-8') as enc_file:
+            enc_file.write(encrypted_files_json)
 
-            # 写入用户加密文件
-            encrypted_file_path = f"files_{user_id}.json.enc"
-            with open(encrypted_file_path, 'w', encoding='utf-8') as enc_file:
-                enc_file.write(encrypted_files_json)
-
-            print(f"Encrypted file generated for user {user_id}: {encrypted_file_path}")
+        print('files.json.enc 已生成。')
 
         # 可选：删除明文 files.json
         try:
@@ -128,12 +126,12 @@ def build_directory_structure(bucket, prefix=''):
     return build_tree('')
 
 
-def encrypt_data(file_path, password_hash, config):
-    """使用用户密码哈希值加密数据"""
+def encrypt_data(file_path, password, config):
+    """使用全局密钥加密数据"""
     try:
         backend = default_backend()
         salt = secrets.token_bytes(config['encryption_salt_length'])  # 动态盐长度
-        # 使用 PBKDF2HMAC 从用户密码哈希生成密钥
+        # 使用 PBKDF2HMAC 从全局密码生成密钥
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,  # AES-256
@@ -141,7 +139,7 @@ def encrypt_data(file_path, password_hash, config):
             iterations=config['encryption_iterations'],  # 动态迭代次数
             backend=backend
         )
-        key = kdf.derive(password_hash.encode())
+        key = kdf.derive(password.encode())
         # 初始化 AES 加密器
         iv = secrets.token_bytes(config['encryption_iv_length'])  # 动态 IV 长度
         cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=backend)
