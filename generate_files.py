@@ -3,10 +3,8 @@ import oss2
 import os
 import base64
 import secrets
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
+from hashlib import sha256
+from nacl.public import PublicKey, SealedBox
 
 
 def load_config():
@@ -47,20 +45,21 @@ def encrypt_aes(data, key):
     return base64.b64encode(iv + encrypted_data).decode("utf-8")
 
 
-def encrypt_with_rsa(public_key_pem, data):
+def encrypt_with_ed25519(public_key_hex, aes_key):
     """
-    使用 RSA 公钥加密数据
+    使用 Ed25519 公钥加密 AES 密钥
+    :param public_key_hex: 用户的 Ed25519 公钥（十六进制字符串）
+    :param aes_key: AES 密钥（字节数据）
+    :return: Base64 编码的加密 AES 密钥
     """
-    public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
-    encrypted = public_key.encrypt(
-        data,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return base64.b64encode(encrypted).decode("utf-8")
+    try:
+        public_key_bytes = bytes.fromhex(public_key_hex)  # 将公钥从十六进制转换为字节
+        public_key = PublicKey(public_key_bytes)  # 构造 Ed25519 公钥对象
+        sealed_box = SealedBox(public_key)  # 创建 SealedBox，用于加密
+        encrypted = sealed_box.encrypt(aes_key)  # 使用公钥加密 AES 密钥
+        return base64.b64encode(encrypted).decode("utf-8")  # 返回 Base64 编码的密文
+    except Exception as e:
+        raise ValueError(f"Ed25519 加密失败，请检查公钥是否正确：{e}")
 
 
 def scan_oss_bucket(bucket, prefix="", exclude_dirs=None, exclude_files=None):
@@ -141,11 +140,14 @@ def main():
         with open("users.json", "r", encoding="utf-8") as f:
             users = json.load(f)
 
-        # 用每个用户的 RSA 公钥加密 AES 密钥
+        # 用每个用户的 Ed25519 公钥加密 AES 密钥
         encrypted_keys = {}
-        for username, public_key_pem in users.items():
-            encrypted_key = encrypt_with_rsa(public_key_pem, aes_key)
-            encrypted_keys[username] = encrypted_key
+        for username, public_key in users.items():
+            try:
+                encrypted_key = encrypt_with_ed25519(public_key, aes_key)
+                encrypted_keys[username] = encrypted_key
+            except ValueError as e:
+                print(f"跳过用户 {username} 的加密，原因：{e}")
 
         # 保存加密的 AES 密钥片段
         with open("encrypted_keys.json", "w", encoding="utf-8") as f:
