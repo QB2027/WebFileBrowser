@@ -5,8 +5,10 @@ import { getParentPath } from './utils.js';
 
 /**
  * 加载并渲染指定路径下的所有文件（file）和文件夹（folder）
+ * @param {string} path - 当前目录路径
+ * @param {function} callback - 路径更新回调函数
  */
-export async function loadDirectory(path) {
+export async function loadDirectory(path, callback) {
   const response = await fetch('./files.json');
   if (!response.ok) {
     throw new Error('Failed to load files.json');
@@ -24,12 +26,10 @@ export async function loadDirectory(path) {
     const parentPath = getParentPath(path);
     const backButton = document.createElement('li');
     backButton.classList.add('back-button');
-    backButton.innerHTML = `<a href="?path=${parentPath}">📂 ../</a>`;
+    backButton.innerHTML = `<a href="?path=${parentPath}">../</a>`;
     backButton.querySelector('a').addEventListener('click', (e) => {
       e.preventDefault();
-      window.history.pushState({}, '', `?path=${parentPath}`);
-      currentPath = parentPath;
-      fetchFiles();
+      callback(parentPath);
     });
     container.appendChild(backButton);
   }
@@ -40,14 +40,13 @@ export async function loadDirectory(path) {
     listItem.classList.add(item.type === 'folder' ? 'directory-item' : 'file-item');
 
     if (item.type === 'folder') {
-      listItem.innerHTML = `<span class="folder">📁 ${item.name}</span>`;
+      listItem.innerHTML = `<span class="folder">${item.name}/</span>`;
       listItem.querySelector('.folder').addEventListener('click', () => {
-        currentPath = item.path.endsWith('/') ? item.path : item.path + '/';
-        window.history.pushState({}, '', `?path=${currentPath}`);
-        fetchFiles();
+        const newPath = item.path.endsWith('/') ? item.path : item.path + '/';
+        callback(newPath);
       });
     } else if (item.type === 'file') {
-      listItem.innerHTML = `<span>📄 ${item.name}</span> <a href="${item.url}" target="_blank">下载</a>`;
+      listItem.innerHTML = `<span>${item.name}</span> <a href="${item.url}" target="_blank">下载</a>`;
     }
 
     container.appendChild(listItem);
