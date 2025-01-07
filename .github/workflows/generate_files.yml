@@ -24,7 +24,7 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install oss2 pynacl cryptography eciespy  # 安装需要的依赖库
+          pip install oss2 cryptography eciespy  # 安装需要的依赖库
 
       - name: Generate Files
         env:
