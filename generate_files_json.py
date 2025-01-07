@@ -10,11 +10,26 @@ from cryptography.hazmat.backends import default_backend
 import base64
 import secrets
 
+# 读取配置
+with open('config.json', 'r', encoding='utf-8') as f:
+    config = json.load(f)
+
+bucket_name = config.get('bucket_name')
+endpoint = config.get('endpoint')
+
+if not bucket_name or not endpoint:
+    raise ValueError("Bucket name and endpoint must be specified in config.json")
+
 # 获取环境变量中的 OSS 凭证
 access_key_id = os.getenv('OSS_ACCESS_KEY_ID')
 access_key_secret = os.getenv('OSS_ACCESS_KEY_SECRET')
-bucket_name = 'class-files'  # 替换为你的 Bucket 名称
-endpoint = 'oss-cn-hangzhou.aliyuncs.com'  # 根据你的 Bucket 所在区域调整
+encryption_password = os.getenv('ENCRYPTION_PASSWORD')
+
+if not access_key_id or not access_key_secret:
+    raise ValueError("OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET must be set")
+
+if not encryption_password:
+    raise ValueError("ENCRYPTION_PASSWORD must be set")
 
 # 初始化 OSS Bucket
 auth = oss2.Auth(access_key_id, access_key_secret)
@@ -85,11 +100,6 @@ def encrypt_data(data, password):
     encrypted_data = base64.b64encode(salt + iv + encrypted).decode('utf-8')
     return encrypted_data
 
-# 获取加密密码（通过环境变量传递）
-encryption_password = os.getenv('ENCRYPTION_PASSWORD')
-if not encryption_password:
-    raise ValueError("ENCRYPTION_PASSWORD 环境变量未设置")
-
 # 读取生成的 files.json
 with open('files.json', 'r', encoding='utf-8') as f:
     files_json = f.read()
@@ -102,3 +112,7 @@ with open('files.json.enc', 'w', encoding='utf-8') as f:
     f.write(encrypted_files_json)
 
 print('files.json.enc 已生成。')
+
+# 可选：删除明文 files.json
+os.remove('files.json')
+print('files.json 已删除。')
