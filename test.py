@@ -1,20 +1,32 @@
-import ecies
+from ecies.utils import generate_eth_key, generate_key
+from ecies import encrypt, decrypt
 
-# 生成以太坊密钥对
-private_key = ecies.utils.generate_eth_key()
-public_key = private_key.public_key  # 不需要调用，直接访问
+# 使用 generate_eth_key() 生成 Ethereum 密钥对
+eth_k = generate_eth_key()
+prvhex = eth_k.to_hex()  # 私钥的十六进制表示
+pubhex = eth_k.public_key.to_hex()  # 公钥的十六进制表示
 
 # 待加密的消息
-message = b"Hello, this is a secret message!"
+data = b'this is a test'
 
-# 使用公钥加密数据
-encrypted_message = ecies.encrypt(public_key, message)
-print(f"Encrypted Message: {encrypted_message}")
+# 使用公钥加密，私钥解密
+encrypted = encrypt(pubhex, data)
+decrypted = decrypt(prvhex, encrypted)
+print(f"pubhex"{pubhex}")
+print(f"prvhex{prvhex}")
 
-# 使用私钥解密数据
-decrypted_message = ecies.decrypt(private_key, encrypted_message)
-print(f"Decrypted Message: {decrypted_message.decode()}")
+# 输出解密后的消息
+print(f"Decrypted with Ethereum key: {decrypted}")  # 应该输出: b'this is a test'
 
-# 打印私钥和公钥的十六进制格式
-print(f"Private Key (hex): {private_key.to_hex()}")
-print(f"Public Key (hex): {public_key.to_hex()}")
+
+# 使用 generate_key() 生成 secp256k1 密钥对
+secp_k = generate_key()
+prvhex = secp_k.to_hex()  # 私钥的十六进制表示
+pubhex = secp_k.public_key.format(True).hex()  # 公钥的十六进制表示
+
+# 使用公钥加密，私钥解密
+encrypted = encrypt(pubhex, data)
+decrypted = decrypt(prvhex, encrypted)
+
+# 输出解密后的消息
+print(f"Decrypted with secp256k1 key: {decrypted}")  # 应该输出: b'this is a test'
