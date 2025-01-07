@@ -1,4 +1,10 @@
 {
-  "bucket_name": "qb2027-files",
-  "endpoint": "oss-cn-shanghai.aliyuncs.com"
+  "bucket_name": "qb2027-files",         // OSS 存储桶名称
+  "endpoint": "oss-cn-shanghai.aliyuncs.com",          // OSS 访问端点
+  "encryption_iterations": 100000,          // 加密密钥派生的迭代次数
+  "encryption_salt_length": 16,             // 盐的长度（字节）
+  "encryption_iv_length": 16,               // 初始化向量的长度（字节）
+  "encryption_password_env": "ENCRYPTION_PASSWORD", // 存储加密密码的环境变量名
+  "oss_access_key_id_env": "OSS_ACCESS_KEY_ID",     // 存储 OSS Access Key ID 的环境变量名
+  "oss_access_key_secret_env": "OSS_ACCESS_KEY_SECRET" // 存储 OSS Access Key Secret 的环境变量名
 }
