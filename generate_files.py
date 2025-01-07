@@ -3,8 +3,9 @@ import oss2
 import os
 import base64
 import secrets
-from hashlib import sha256
 from nacl.public import PublicKey, SealedBox
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
 
 
 def load_config():
