@@ -1,13 +1,13 @@
 name: Generate Files JSON
 
 on:
+  workflow_dispatch:
   push:
-    workflow_dispatch:
     branches:
       - main
 
 jobs:
-  build:
+  generate-files:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,7 +20,9 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install oss2
+        run: |
+          python -m pip install --upgrade pip
+          pip install oss2
 
       - name: Generate files.json
         env:
@@ -29,10 +31,12 @@ jobs:
         run: |
           python generate_files_json.py
 
-      - name: Commit and push changes
+      - name: Commit and push files.json
         run: |
-          git config --global user.name "gitee-ci"
-          git config --global user.email "ci@gitee.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add files.json
           git commit -m "Update files.json"
-          git push origin master
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
