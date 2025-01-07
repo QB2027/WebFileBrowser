@@ -1,0 +1,27 @@
+[
+  {
+    "name": "test",
+    "type": "directory",
+    "path": "test",
+    "children": []
+  },
+  {
+    "name": "test",
+    "type": "directory",
+    "path": "test",
+    "children": [
+      {
+        "name": "jasonxue",
+        "type": "directory",
+        "path": "test/jasonxue",
+        "children": []
+      }
+    ]
+  },
+  {
+    "name": "study",
+    "type": "directory",
+    "path": "study",
+    "children": []
+  }
+]
