@@ -4,26 +4,127 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件解密系统</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        label, input, button {
+            display: block;
+            margin-bottom: 15px;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ccc;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+        }
+    </style>
 </head>
 <body>
     <h1>文件解密系统</h1>
 
-    <div class="form-container">
-        <label for="username">用户名：</label>
-        <input type="text" id="username" placeholder="请输入用户名">
+    <label for="username">用户名：</label>
+    <input type="text" id="username" placeholder="请输入用户名">
 
-        <label for="password">密码：</label>
-        <input type="password" id="password" placeholder="请输入密码">
+    <label for="password">密码：</label>
+    <input type="password" id="password" placeholder="请输入密码">
 
-        <button onclick="decryptFiles()">解密文件列表</button>
-    </div>
+    <button onclick="decryptFiles()">解密文件列表</button>
 
     <h2>文件列表：</h2>
     <pre id="output">请填写用户名和密码后点击“解密文件列表”</pre>
 
-    <script src="nacl.min.js"></script>
-    <script src="nacl-util.min.js"></script>
-    <script src="script.js"></script>
+    <script>
+        async function decryptFiles() {
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+
+            if (!username || !password) {
+                document.getElementById("output").textContent = "请填写用户名和密码！";
+                return;
+            }
+
+            try {
+                // 生成私钥
+                const privateKey = await generatePrivateKey(password);
+
+                // 加载加密的文件列表
+                const encryptedFilesResponse = await fetch("files.json.enc");
+                const encryptedFiles = await encryptedFilesResponse.text();
+
+                // 加载加密的 AES 密钥片段
+                const encryptedKeysResponse = await fetch("encrypted_keys.json");
+                const encryptedKeys = await encryptedKeysResponse.json();
+
+                // 检查用户的加密 AES 密钥片段
+                const encryptedKey = encryptedKeys[username];
+                if (!encryptedKey) {
+                    document.getElementById("output").textContent = "用户不存在或没有对应的加密密钥片段！";
+                    return;
+                }
+
+                // 解密 AES 密钥
+                const aesKey = await decryptEd25519(privateKey, encryptedKey);
+
+                // 解密文件列表
+                const files = decryptAES(encryptedFiles, aesKey);
+
+                // 显示解密后的文件列表
+                document.getElementById("output").textContent = JSON.stringify(files, null, 2);
+            } catch (error) {
+                document.getElementById("output").textContent = "解密失败，请检查用户名和密码是否正确！";
+            }
+        }
+
+        async function generatePrivateKey(password) {
+            // 使用密码生成私钥（Ed25519 私钥需要 32 字节密钥）
+            const passwordHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+            return new Uint8Array(passwordHash).slice(0, 32); // 截取前 32 字节作为私钥
+        }
+
+        async function decryptEd25519(privateKey, encryptedKey) {
+            // 使用 Ed25519 私钥解密 AES 密钥
+            const nacl = await import("https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js");
+            const sealedBox = nacl.box.open(
+                decodeBase64(encryptedKey),
+                new Uint8Array(24), // 假设公钥和加密密钥都使用 NaCl 标准
+                privateKey
+            );
+            if (!sealedBox) {
+                throw new Error("解密失败");
+            }
+            return sealedBox;
+        }
+
+        function decryptAES(encryptedData, aesKey) {
+            // 解密 AES 数据
+            const decodedData = decodeBase64(encryptedData);
+            const iv = decodedData.slice(0, 16);
+            const encryptedContent = decodedData.slice(16);
+
+            const aesKeyBuffer = new Uint8Array(aesKey);
+
+            const cipher = new aesjs.ModeOfOperation.cfb(aesKeyBuffer, iv);
+            const decryptedBytes = cipher.decrypt(encryptedContent);
+
+            return JSON.parse(new TextDecoder().decode(decryptedBytes));
+        }
+
+        function decodeBase64(base64) {
+            // 解码 Base64 字符串
+            const binaryString = atob(base64);
+            const binaryLength = binaryString.length;
+            const bytes = new Uint8Array(binaryLength);
+            for (let i = 0; i < binaryLength; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        }
+    </script>
 </body>
 </html>
