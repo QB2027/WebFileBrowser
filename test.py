@@ -5,6 +5,8 @@ from ecies import encrypt, decrypt
 eth_k = generate_eth_key()
 prvhex = eth_k.to_hex()  # 私钥的十六进制表示
 pubhex = eth_k.public_key.to_hex()  # 公钥的十六进制表示
+print("prv{eth_k}")
+print("pub{eth_k.public_key}")
 
 # 待加密的消息
 data = b'this is a test'
