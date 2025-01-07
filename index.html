@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -15,7 +16,7 @@
     <h2>登录</h2>
     <input type="text" id="username" placeholder="用户名" required>
     <input type="password" id="password" placeholder="密码" required>
-    <button onclick="login()">登录</button>
+    <button id="login-button">登录</button>
     <p id="error-message" class="error-message"></p>
   </div>
 
@@ -32,6 +33,6 @@
   </div>
 
   <!-- 引入主脚本 -->
-  <script src="scripts/main.js"></script>
+  <script src="scripts/main.js" type="module"></script>
 </body>
 </html>
