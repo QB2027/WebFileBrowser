@@ -2,394 +2,172 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>钱班文件下载</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文件下载系统</title>
   <style>
-    /* 基本样式 */
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
-      background-color: #f5f5f5;
     }
 
-    h1, h2 {
-      color: #333;
+    h1 {
+      text-align: center;
     }
 
-    #login-form, #download-section {
-      background-color: #fff;
-      padding: 20px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      max-width: 400px;
-      margin: 20px auto;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-    }
-
-    button {
-      padding: 10px 20px;
-      background-color: #28a745;
-      border: none;
-      color: white;
-      cursor: pointer;
-      border-radius: 3px;
-      width: 100%;
-      font-size: 16px;
-    }
-
-    button:hover {
-      background-color: #218838;
-    }
-
-    .error-message {
-      color: red;
-      margin-top: 10px;
+    .login-form {
+      text-align: center;
+      margin-bottom: 20px;
     }
 
     .file-list {
-      list-style-type: none;
+      list-style: none;
       padding: 0;
     }
 
     .file-list li {
-      padding: 8px 0;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      margin: 5px 0;
     }
 
-    .file-list li.directory-item .folder {
-      cursor: pointer;
-      color: #007bff;
+    .file-list a {
+      text-decoration: none;
+      color: blue;
     }
 
-    .file-list li.directory-item .folder:hover {
+    .file-list a:hover {
       text-decoration: underline;
-    }
-
-    .breadcrumb {
-      margin-bottom: 20px;
-    }
-
-    .breadcrumb span {
-      cursor: pointer;
-      color: #007bff;
-    }
-
-    .breadcrumb span:hover {
-      text-decoration: underline;
-    }
-
-    .breadcrumb span::after {
-      content: " > ";
-    }
-
-    .breadcrumb span:last-child::after {
-      content: "";
     }
   </style>
 </head>
 <body>
-  <h1>钱班文件下载</h1>
-  
-  <!-- 登录表单 -->
-  <div id="login-form">
-    <h2>登录</h2>
-    <input type="text" id="username" placeholder="用户名" required>
-    <input type="password" id="password" placeholder="密码" required>
-    <button id="login-button">登录</button>
-    <p id="error-message" class="error-message"></p>
+  <h1>文件下载系统</h1>
+
+  <div class="login-form">
+    <label for="username">用户名：</label>
+    <input type="text" id="username" placeholder="请输入用户名"><br><br>
+
+    <label for="password">密码：</label>
+    <input type="password" id="password" placeholder="请输入密码"><br><br>
+
+    <button id="login-btn">登录</button>
   </div>
 
-  <!-- 文件下载区域 -->
-  <div id="download-section" style="display: none;">
-    <h2>文件下载</h2>
-    <!-- 导航路径 -->
-    <div class="breadcrumb" id="breadcrumb"></div>
-    <!-- 文件和文件夹列表 -->
-    <ul class="file-list" id="file-list">
-      <!-- 文件和文件夹将由JS动态填充 -->
-    </ul>
-    <button id="logout-button">登出</button>
-  </div>
+  <ul class="file-list" id="file-list"></ul>
 
-  <!-- 主脚本 -->
   <script>
-    let currentPath = ''; // 当前目录路径
-
-    /**
-     * 解密数据
-     * @param {string} encryptedData - Base64编码的加密数据（包含盐和IV）
-     * @param {string} password - 用户密码
-     * @returns {Promise<string>} - 解密后的数据
-     */
-    async function decryptData(encryptedData, password) {
-      try {
-        const binaryString = atob(encryptedData);
-        const encryptedBytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0)));
-
-        // 提取盐、IV和密文
-        const salt = encryptedBytes.slice(0, 16);
-        const iv = encryptedBytes.slice(16, 32);
-        const ciphertext = encryptedBytes.slice(32);
-
-        // 导入密码为原始密钥材料
-        const keyMaterial = await crypto.subtle.importKey(
-          'raw',
-          new TextEncoder().encode(password),
-          { name: 'PBKDF2' },
-          false,
-          ['deriveKey']
-        );
-
-        // 使用 PBKDF2 派生出 AES-CFB 密钥
-        const key = await crypto.subtle.deriveKey(
-          {
-            name: 'PBKDF2',
-            salt: salt,
-            iterations: 100000,
-            hash: 'SHA-256'
-          },
-          keyMaterial,
-          { name: 'AES-CFB', length: 256 },
-          false,
-          ['decrypt']
-        );
-
-        // 解密
-        const decrypted = await crypto.subtle.decrypt(
-          {
-            name: 'AES-CFB',
-            iv: iv
-          },
-          key,
-          ciphertext
-        );
-
-        return new TextDecoder().decode(decrypted);
-      } catch (error) {
-        console.error('解密失败:', error);
-        throw new Error('解密失败，请检查密码是否正确。');
-      }
-    }
-
-    /**
-     * SHA-256 哈希函数
-     * @param {string} message - 需要哈希的消息
-     * @returns {Promise<string>} - 哈希后的十六进制字符串
-     */
+    // 工具函数：SHA-256 哈希
     async function sha256(message) {
       const msgBuffer = new TextEncoder().encode(message);
       const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      return hashHex;
+      return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
     }
 
-    /**
-     * 显示文件和文件夹列表
-     * @param {Array} files - 文件和文件夹的数组
-     * @param {string} path - 当前路径
-     */
-    function displayFiles(files, path) {
-      const container = document.getElementById('file-list');
-      container.innerHTML = '';
+    // 工具函数：PBKDF2 密钥派生
+    async function deriveKey(password, salt) {
+      const encoder = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(password),
+        'PBKDF2',
+        false,
+        ['deriveKey']
+      );
 
-      // 过滤当前目录下的文件和文件夹
-      const items = files.filter(item => {
-        const itemPath = item.path;
-        if (path === '') {
-          return !itemPath.includes('/') || itemPath.endsWith('/');
-        }
-        return itemPath.startsWith(path) && 
-               (itemPath.split('/').filter(part => part).length === 
-                path.split('/').filter(part => part).length + 
-                (item.type === 'folder' ? 1 : 0));
-      });
+      return await crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          salt: salt,
+          iterations: 100000 // 与后端保持一致
+        },
+        keyMaterial,
+        {
+          name: 'AES-CFB',
+          length: 256
+        },
+        false,
+        ['decrypt']
+      );
+    }
 
-      // 处理文件夹和文件
-      items.forEach(item => {
+    // 工具函数：AES 解密
+    async function decryptAES(ciphertext, key, iv) {
+      return await crypto.subtle.decrypt(
+        {
+          name: 'AES-CFB',
+          iv: iv
+        },
+        key,
+        ciphertext
+      );
+    }
+
+    // 显示文件列表
+    function displayFiles(files) {
+      const fileList = document.getElementById('file-list');
+      fileList.innerHTML = '';
+
+      files.forEach(file => {
         const listItem = document.createElement('li');
-        listItem.classList.add(item.type === 'folder' ? 'directory-item' : 'file-item');
 
-        if (item.type === 'folder') {
-          listItem.innerHTML = `<span class="folder">${item.name}/</span>`;
-          listItem.querySelector('.folder').addEventListener('click', () => {
-            currentPath = item.path.endsWith('/') ? item.path : item.path + '/';
-            updateBreadcrumb(currentPath);
-            fetchFiles();
-          });
-        } else if (item.type === 'file') {
-          listItem.innerHTML = `<span>${item.name}</span> <a href="${item.url}" target="_blank">下载</a>`;
+        if (file.type === 'file') {
+          const link = document.createElement('a');
+          link.href = file.url;
+          link.textContent = file.name;
+          link.target = '_blank';
+          listItem.appendChild(link);
+        } else if (file.type === 'folder') {
+          listItem.textContent = file.name + '/';
         }
 
-        container.appendChild(listItem);
+        fileList.appendChild(listItem);
       });
     }
 
-    /**
-     * 更新导航路径（面包屑）
-     * @param {string} path - 当前路径
-     */
-    function updateBreadcrumb(path) {
-      const breadcrumb = document.getElementById('breadcrumb');
-      breadcrumb.innerHTML = '';
-
-      if (path === '') return;
-
-      const parts = path.split('/').filter(part => part);
-      let accumulatedPath = '';
-
-      parts.forEach((part, index) => {
-        accumulatedPath += part + '/';
-        const span = document.createElement('span');
-        span.textContent = part;
-        span.addEventListener('click', () => {
-          currentPath = accumulatedPath;
-          updateBreadcrumb(currentPath);
-          fetchFiles();
-        });
-        breadcrumb.appendChild(span);
-      });
-    }
-
-    /**
-     * 获取并展示文件列表
-     * @param {string} password - 用户密码
-     */
-    async function fetchFiles(password) {
-      try {
-        const response = await fetch('files.json.enc');
-        if (!response.ok) {
-          throw new Error('无法加载加密的文件列表');
-        }
-        const encryptedData = await response.text();
-
-        // 解密数据
-        const decryptedData = await decryptData(encryptedData, password);
-        const files = JSON.parse(decryptedData);
-
-        displayFiles(files, currentPath);
-      } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('file-list').innerHTML = `<li>加载文件列表时出错：${error.message}</li>`;
-      }
-    }
-
-    /**
-     * 登录函数
-     */
-    async function login() {
+    // 用户登录和解密流程
+    document.getElementById('login-btn').addEventListener('click', async () => {
       const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      const errorMessage = document.getElementById('error-message');
-
-      // 清除之前的错误消息
-      errorMessage.innerText = '';
+      const password = document.getElementById('password').value.trim();
 
       if (!username || !password) {
-        errorMessage.innerText = '用户名和密码不能为空';
+        alert('请输入用户名和密码！');
         return;
       }
 
       try {
-        // 获取 users.json
-        const usersResponse = await fetch('users.json');
-        if (!usersResponse.ok) {
-          throw new Error('无法加载用户数据');
-        }
-        const users = await usersResponse.json();
-
-        // 使用 SHA-256 对输入密码进行哈希
-        const hashedPassword = await sha256(password);
-
         // 验证用户名和密码
-        if (users[username] && users[username] === hashedPassword) {
-          // 存储登录状态
-          localStorage.setItem('authToken', 'authenticated');
+        const response = await fetch('users.json'); // 加载用户信息文件
+        const users = await response.json();
 
-          // 隐藏登录表单，显示下载区域
-          document.getElementById('login-form').style.display = 'none';
-          document.getElementById('download-section').style.display = 'block';
-
-          // 获取并展示文件列表
-          await fetchFiles(password);
-
-          // 更新面包屑导航
-          updateBreadcrumb('');
-        } else {
-          errorMessage.innerText = '用户名或密码错误';
+        const hashedPassword = await sha256(password);
+        if (!users[username] || users[username] !== hashedPassword) {
+          alert('用户名或密码错误！');
+          return;
         }
+
+        // 加载加密的文件数据
+        const encResponse = await fetch('files.json.enc');
+        const encText = await encResponse.text();
+        const encBytes = new Uint8Array(atob(encText).split('').map(c => c.charCodeAt(0)));
+
+        // 提取盐、IV 和密文
+        const salt = encBytes.slice(0, 16);
+        const iv = encBytes.slice(16, 32);
+        const ciphertext = encBytes.slice(32);
+
+        // 派生密钥并解密
+        const key = await deriveKey(password, salt);
+        const decryptedData = await decryptAES(ciphertext, key, iv);
+
+        // 解析解密后的 JSON 数据
+        const files = JSON.parse(new TextDecoder().decode(decryptedData));
+        displayFiles(files);
       } catch (error) {
-        console.error('Error:', error);
-        errorMessage.innerText = '登录时出错，请稍后再试';
+        console.error(error);
+        alert('加载文件列表时出错：解密失败，请检查密码是否正确。');
       }
-    }
-
-    /**
-     * 登出函数
-     */
-    function logout() {
-      // 清除登录状态
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('encryptionPassword');
-
-      // 隐藏下载区域，显示登录表单
-      document.getElementById('download-section').style.display = 'none';
-      document.getElementById('login-form').style.display = 'block';
-
-      // 清除文件列表和导航
-      document.getElementById('file-list').innerHTML = '';
-      document.getElementById('breadcrumb').innerHTML = '';
-    }
-
-    /**
-     * 初始化页面
-     */
-    function init() {
-      const authToken = localStorage.getItem('authToken');
-      if (authToken === 'authenticated') {
-        // 如果已登录，显示下载区域
-        document.getElementById('login-form').style.display = 'none';
-        document.getElementById('download-section').style.display = 'block';
-        // 获取并展示文件列表
-        // 此时需要用户密码，建议用户重新输入密码或存储在安全地方
-        // 为简化，假设密码存储在 localStorage（不推荐）
-        const encryptionPassword = localStorage.getItem('encryptionPassword');
-        if (encryptionPassword) {
-          fetchFiles(encryptionPassword);
-        } else {
-          // 提示用户重新登录或输入密码
-          alert('请重新登录以获取解密密码。');
-          logout();
-        }
-      }
-
-      // 绑定登录按钮的点击事件
-      const loginButton = document.getElementById('login-button');
-      if (loginButton) {
-        loginButton.addEventListener('click', login);
-      }
-
-      // 绑定登出按钮的点击事件
-      const logoutButton = document.getElementById('logout-button');
-      if (logoutButton) {
-        logoutButton.addEventListener('click', logout);
-      }
-    }
-
-    // 确保脚本在 DOM 完全加载后执行
-    document.addEventListener('DOMContentLoaded', init);
+    });
   </script>
 </body>
 </html>
