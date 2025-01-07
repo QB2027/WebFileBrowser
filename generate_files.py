@@ -3,10 +3,12 @@ import oss2
 import os
 import base64
 import secrets
-from nacl.public import PublicKey, SealedBox
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import ecies
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
-
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 def load_config():
     """
@@ -46,21 +48,25 @@ def encrypt_aes(data, key):
     return base64.b64encode(iv + encrypted_data).decode("utf-8")
 
 
-def encrypt_with_ed25519(public_key_hex, aes_key):
+def encrypt_with_ecies(public_key_pem, aes_key):
     """
-    使用 Ed25519 公钥加密 AES 密钥
-    :param public_key_hex: 用户的 Ed25519 公钥（十六进制字符串）
+    使用 ECIES 加密 AES 密钥
+    :param public_key_pem: 用户的 EC 公钥（PEM 格式字符串）
     :param aes_key: AES 密钥（字节数据）
     :return: Base64 编码的加密 AES 密钥
     """
     try:
-        public_key_bytes = bytes.fromhex(public_key_hex)  # 将公钥从十六进制转换为字节
-        public_key = PublicKey(public_key_bytes)  # 构造 Ed25519 公钥对象
-        sealed_box = SealedBox(public_key)  # 创建 SealedBox，用于加密
-        encrypted = sealed_box.encrypt(aes_key)  # 使用公钥加密 AES 密钥
-        return base64.b64encode(encrypted).decode("utf-8")  # 返回 Base64 编码的密文
+        # 加载 EC 公钥
+        public_key = ecies.utils.deserialize_public(public_key_pem.encode('utf-8'))
+
+        # 使用 ECIES 加密 AES 密钥
+        encrypted_aes_key = ecies.encrypt(public_key, aes_key)
+
+        # 返回加密后的 AES 密钥（Base64 编码）
+        return base64.b64encode(encrypted_aes_key).decode("utf-8")
+
     except Exception as e:
-        raise ValueError(f"Ed25519 加密失败，请检查公钥是否正确：{e}")
+        raise ValueError(f"ECIES 加密失败，请检查公钥是否正确：{e}")
 
 
 def scan_oss_bucket(bucket, prefix="", exclude_dirs=None, exclude_files=None):
@@ -141,11 +147,11 @@ def main():
         with open("users.json", "r", encoding="utf-8") as f:
             users = json.load(f)
 
-        # 用每个用户的 Ed25519 公钥加密 AES 密钥
+        # 用每个用户的 EC 公钥加密 AES 密钥
         encrypted_keys = {}
-        for username, public_key in users.items():
+        for username, public_key_pem in users.items():
             try:
-                encrypted_key = encrypt_with_ed25519(public_key, aes_key)
+                encrypted_key = encrypt_with_ecies(public_key_pem, aes_key)
                 encrypted_keys[username] = encrypted_key
             except ValueError as e:
                 print(f"跳过用户 {username} 的加密，原因：{e}")
