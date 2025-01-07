@@ -32,8 +32,8 @@ jobs:
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
           ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
         run: |
-          python generate_and_encrypt_json.py  # 生成并加密文件结构
-          python encrypt_aes_key_with_ecies.py  # 加密 AES 密钥
+          python generate_files.py  # 生成并加密文件结构
+
 
       - name: Commit and Push Files
         run: |
