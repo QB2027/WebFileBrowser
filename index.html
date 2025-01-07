@@ -3,65 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>文件下载系统</title>
+  <title>文件浏览器</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-
-    h1 {
-      text-align: center;
-    }
-
-    .login-form {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    .file-list {
-      list-style: none;
-      padding: 0;
-    }
-
-    .file-list li {
-      margin: 5px 0;
-    }
-
-    .file-list a {
-      text-decoration: none;
-      color: blue;
-    }
-
-    .file-list a:hover {
-      text-decoration: underline;
-    }
-
-    .back-button {
-      margin-bottom: 10px;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { text-align: center; }
+    .login-form, .file-list { margin: 0 auto; max-width: 600px; }
+    .file-list { list-style: none; padding: 0; }
+    .file-list li { margin: 10px 0; }
   </style>
 </head>
 <body>
-  <h1>文件下载系统</h1>
-
+  <h1>文件浏览系统</h1>
   <div class="login-form">
-    <label for="username">用户名：</label>
-    <input type="text" id="username" placeholder="请输入用户名"><br><br>
-
-    <label for="password">密码：</label>
-    <input type="password" id="password" placeholder="请输入密码"><br><br>
-
+    <label for="username">请输入用户名：</label>
+    <input type="text" id="username" placeholder="用户名"><br><br>
+    <label for="password">请输入密码：</label>
+    <input type="password" id="password" placeholder="密码"><br><br>
     <button id="login-btn">登录</button>
   </div>
-
-  <div id="file-browser" style="display:none;">
-    <button id="back-button" class="back-button">返回上一级</button>
-    <ul class="file-list" id="file-list"></ul>
-  </div>
-
+  <ul class="file-list" id="file-list" style="display:none;"></ul>
   <script>
-    // 工具函数：SHA-256 哈希
     async function sha256(message) {
       const msgBuffer = new TextEncoder().encode(message);
       const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -70,7 +31,6 @@
         .join('');
     }
 
-    // 工具函数：PBKDF2 密钥派生
     async function deriveKey(password, salt) {
       const encoder = new TextEncoder();
       const keyMaterial = await crypto.subtle.importKey(
@@ -86,7 +46,7 @@
           name: 'PBKDF2',
           hash: 'SHA-256',
           salt: salt,
-          iterations: 100000 // 与后端保持一致
+          iterations: 100000
         },
         keyMaterial,
         {
@@ -98,7 +58,6 @@
       );
     }
 
-    // 工具函数：AES 解密
     async function decryptAES(ciphertext, key, iv) {
       return await crypto.subtle.decrypt(
         {
@@ -110,61 +69,6 @@
       );
     }
 
-    // 文件层级结构显示
-    function displayFiles(files, currentPath) {
-      const fileList = document.getElementById('file-list');
-      fileList.innerHTML = '';
-
-      // 如果不在根目录，显示返回上一级
-      if (currentPath) {
-        const backButton = document.getElementById('back-button');
-        backButton.style.display = 'block';
-        backButton.onclick = () => {
-          const parentPath = currentPath.split('/').slice(0, -1).join('/');
-          renderDirectory(parentPath, files);
-        };
-      } else {
-        document.getElementById('back-button').style.display = 'none';
-      }
-
-      files.forEach(file => {
-        const listItem = document.createElement('li');
-
-        if (file.type === 'file') {
-          const link = document.createElement('a');
-          link.href = file.path;
-          link.textContent = file.name;
-          link.target = '_blank';
-          listItem.appendChild(link);
-        } else if (file.type === 'directory') {
-          const folderLink = document.createElement('a');
-          folderLink.href = '#';
-          folderLink.textContent = file.name + '/';
-          folderLink.onclick = (e) => {
-            e.preventDefault();
-            renderDirectory(file.path, files);
-          };
-          listItem.appendChild(folderLink);
-        }
-
-        fileList.appendChild(listItem);
-      });
-    }
-
-    // 递归渲染目录
-    function renderDirectory(currentPath, fullStructure) {
-      const segments = currentPath.split('/').filter(Boolean);
-
-      let currentLevel = fullStructure;
-      segments.forEach(segment => {
-        const found = currentLevel.find(item => item.name === segment && item.type === 'directory');
-        if (found) currentLevel = found.children || [];
-      });
-
-      displayFiles(currentLevel, currentPath);
-    }
-
-    // 用户登录和解密流程
     document.getElementById('login-btn').addEventListener('click', async () => {
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
@@ -175,42 +79,24 @@
       }
 
       try {
-        // 加载用户哈希列表
-        const response = await fetch('users.json'); // 加载用户信息文件
-        const users = await response.json();
-
-        const hashedPassword = await sha256(password);
-        if (!users[username] || users[username] !== hashedPassword) {
-          alert('用户名或密码错误！');
-          return;
-        }
-
-        // 加载加密文件
-        const encResponse = await fetch(`files_${username}.json.enc`);
+        const encResponse = await fetch('files.json.enc');
         const encText = await encResponse.text();
         const encBytes = new Uint8Array(atob(encText).split('').map(c => c.charCodeAt(0)));
 
-        // 提取盐、IV 和密文
         const salt = encBytes.slice(0, 16);
         const iv = encBytes.slice(16, 32);
         const ciphertext = encBytes.slice(32);
 
-        // 派生密钥并解密
         const key = await deriveKey(password, salt);
         const decryptedData = await decryptAES(ciphertext, key, iv);
-
-        // 解析解密后的 JSON 数据
         const files = JSON.parse(new TextDecoder().decode(decryptedData));
 
-        // 隐藏登录表单并显示文件浏览器
         document.querySelector('.login-form').style.display = 'none';
-        document.getElementById('file-browser').style.display = 'block';
-
-        // 渲染文件结构
-        renderDirectory('', files);
+        const fileList = document.getElementById('file-list');
+        fileList.style.display = 'block';
+        fileList.innerHTML = files.map(file => `<li>${file.name}</li>`).join('');
       } catch (error) {
-        console.error(error);
-        alert('加载文件列表时出错：解密失败，请检查密码是否正确。');
+        alert('解密失败，请检查密码是否正确。');
       }
     });
   </script>
