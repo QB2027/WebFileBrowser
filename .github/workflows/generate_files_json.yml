@@ -1,10 +1,12 @@
-name: Generate Files JSON
+name: Generate files.json
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+  schedule:
+    - cron: '0 * * * *'  # 每小时运行一次
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
   generate-files:
