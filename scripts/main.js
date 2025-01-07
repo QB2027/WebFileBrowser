@@ -1,187 +1,38 @@
-// scripts/main.js
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>钱班文件下载</title>
+  <!-- 引入外部CSS -->
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <h1>钱班文件下载</h1>
+  
+  <!-- 登录表单 -->
+  <div id="login-form">
+    <h2>登录</h2>
+    <input type="text" id="username" placeholder="用户名" required>
+    <input type="password" id="password" placeholder="密码" required>
+    <button id="login-button">登录</button>
+    <p id="error-message" class="error-message"></p>
+  </div>
 
-import { decryptData } from './cryptoUtils.js';
+  <!-- 文件下载区域 -->
+  <div id="download-section" style="display: none;">
+    <h2>文件下载</h2>
+    <!-- 导航路径 -->
+    <div id="breadcrumb"></div>
+    <!-- 文件和文件夹列表 -->
+    <ul class="file-list">
+      <!-- 文件和文件夹将由JS动态填充 -->
+    </ul>
+    <button onclick="logout()">登出</button>
+  </div>
 
-let currentPath = ''; // 当前目录路径
-
-// 登录函数
-async function login() {
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
-  const errorMessage = document.getElementById('error-message');
-
-  try {
-    // 获取 users.json
-    const usersResponse = await fetch('users.json');
-    if (!usersResponse.ok) {
-      throw new Error('无法加载用户数据');
-    }
-    const users = await usersResponse.json();
-
-    // 使用 SHA-256 对输入密码进行哈希
-    const hashedPassword = await sha256(password);
-
-    // 验证用户名和密码
-    if (users[username] && users[username] === hashedPassword) {
-      // 存储登录状态和加密密码
-      localStorage.setItem('authToken', 'authenticated');
-      localStorage.setItem('encryptionPassword', password); // 存储密码用于解密
-
-      // 隐藏登录表单，显示下载区域
-      document.getElementById('login-form').style.display = 'none';
-      document.getElementById('download-section').style.display = 'block';
-
-      // 获取并展示文件列表
-      await fetchFiles();
-    } else {
-      errorMessage.innerText = '用户名或密码错误';
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    errorMessage.innerText = '登录时出错，请稍后再试';
-  }
-}
-
-// 登出函数
-function logout() {
-  // 清除登录状态
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('encryptionPassword');
-
-  // 隐藏下载区域，显示登录表单
-  document.getElementById('download-section').style.display = 'none';
-  document.getElementById('login-form').style.display = 'block';
-}
-
-// 获取并展示文件列表
-async function fetchFiles() {
-  try {
-    const response = await fetch('files.json.enc');
-    if (!response.ok) {
-      throw new Error('无法加载加密的文件列表');
-    }
-    const encryptedData = await response.text();
-
-    // 获取加密密码
-    const encryptionPassword = localStorage.getItem('encryptionPassword');
-    if (!encryptionPassword) {
-      throw new Error('加密密码缺失');
-    }
-
-    // 解密数据
-    const decryptedData = await decryptData(encryptedData, encryptionPassword);
-    const files = JSON.parse(decryptedData);
-
-    displayFiles(files, currentPath);
-  } catch (error) {
-    console.error('Error:', error);
-    document.querySelector('.file-list').innerHTML = '<li>加载文件列表时出错。</li>';
-  }
-}
-
-// 显示文件和文件夹列表
-function displayFiles(files, path) {
-  const container = document.querySelector('.file-list');
-  const breadcrumb = document.getElementById('breadcrumb');
-  container.innerHTML = '';
-  breadcrumb.innerHTML = '';
-
-  // 生成导航路径
-  const pathParts = path.split('/').filter(part => part);
-  let accumulatedPath = '';
-  const breadcrumbList = [];
-
-  // 添加“首页”链接
-  breadcrumbList.push({ name: '首页', path: '' });
-
-  pathParts.forEach(part => {
-    accumulatedPath += part + '/';
-    breadcrumbList.push({ name: part, path: accumulatedPath });
-  });
-
-  // 渲染导航路径
-  breadcrumbList.forEach((crumb, index) => {
-    const crumbLink = document.createElement('a');
-    crumbLink.href = '#';
-    crumbLink.innerText = crumb.name;
-    crumbLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      currentPath = crumb.path;
-      fetchFiles();
-    });
-    breadcrumb.appendChild(crumbLink);
-    if (index < breadcrumbList.length - 1) {
-      const separator = document.createElement('span');
-      separator.innerText = ' / ';
-      breadcrumb.appendChild(separator);
-    }
-  });
-
-  // 过滤当前目录下的文件和文件夹
-  const items = files.filter(item => {
-    const itemPath = item.path;
-    if (currentPath === '') {
-      return !itemPath.includes('/') || itemPath.endsWith('/');
-    }
-    return itemPath.startsWith(currentPath) && (itemPath.split('/').filter(part => part).length === currentPath.split('/').filter(part => part).length + (item.type === 'folder' ? 1 : 0));
-  });
-
-  // 处理文件夹和文件
-  items.forEach(item => {
-    const listItem = document.createElement('li');
-    listItem.classList.add(item.type === 'folder' ? 'directory-item' : 'file-item');
-
-    if (item.type === 'folder') {
-      listItem.innerHTML = `<span class="folder">${item.name}/</span>`;
-      listItem.querySelector('.folder').addEventListener('click', () => {
-        currentPath = item.path.endsWith('/') ? item.path : item.path + '/';
-        fetchFiles();
-      });
-    } else if (item.type === 'file') {
-      listItem.innerHTML = `<span>${item.name}</span> <a href="${item.url}" target="_blank">下载</a>`;
-    }
-
-    container.appendChild(listItem);
-  });
-}
-
-// SHA-256 哈希函数
-async function sha256(message) {
-  // 转换为 UTF-8 编码
-  const msgBuffer = new TextEncoder().encode(message);
-  // 进行哈希
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  // 转换为十六进制字符串
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
-}
-
-// 初始化页面
-function init() {
-  const authToken = localStorage.getItem('authToken');
-  if (authToken === 'authenticated') {
-    // 如果已登录，显示下载区域
-    document.getElementById('login-form').style.display = 'none';
-    document.getElementById('download-section').style.display = 'block';
-    // 获取当前 URL 中 ?path= 指定的目录路径
-    const params = new URLSearchParams(window.location.search);
-    currentPath = params.get('path') || '';
-    fetchFiles();
-  }
-}
-
-// 更新路径并加载目录
-async function updatePath(newPath) {
-  currentPath = newPath;
-  // 更新 URL without reloading
-  window.history.pushState({}, '', `?path=${newPath}`);
-  await fetchFiles();
-}
-
-// 监听认证状态变化
-window.login = login;
-window.logout = logout;
-
-// 初始化页面加载
-window.onload = init;
+  <!-- 引入主脚本 -->
+  <script src="scripts/main.js" type="module"></script>
+</body>
+</html>
