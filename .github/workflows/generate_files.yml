@@ -24,7 +24,7 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install oss2 pynacl cryptography
+          pip install oss2 pynacl cryptography eciespy  # 安装需要的依赖库
 
       - name: Generate Files
         env:
@@ -32,7 +32,8 @@ jobs:
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
           ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
         run: |
-          python generate_files.py
+          python generate_and_encrypt_json.py  # 生成并加密文件结构
+          python encrypt_aes_key_with_ecies.py  # 加密 AES 密钥
 
       - name: Commit and Push Files
         run: |
