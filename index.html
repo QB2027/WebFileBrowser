@@ -28,26 +28,26 @@
     <label for="username">用户名：</label>
     <input type="text" id="username" placeholder="请输入用户名">
 
-    <label for="privateKey">私钥文件：</label>
-    <input type="file" id="privateKey">
+    <label for="password">密码：</label>
+    <input type="password" id="password" placeholder="请输入密码">
 
     <button onclick="decryptFiles()">解密文件列表</button>
 
     <h2>文件列表：</h2>
-    <pre id="output">请上传私钥并输入用户名后点击“解密文件列表”</pre>
+    <pre id="output">请填写用户名和密码后点击“解密文件列表”</pre>
 
     <script>
         async function decryptFiles() {
             const username = document.getElementById("username").value.trim();
-            const privateKeyFile = document.getElementById("privateKey").files[0];
+            const password = document.getElementById("password").value;
 
-            if (!username || !privateKeyFile) {
-                document.getElementById("output").textContent = "请填写用户名并上传私钥文件！";
+            if (!username || !password) {
+                document.getElementById("output").textContent = "请填写用户名和密码！";
                 return;
             }
 
-            // 读取私钥文件
-            const privateKeyText = await privateKeyFile.text();
+            // 动态生成 RSA 私钥
+            const privateKey = await generatePrivateKey(password);
 
             // 加载加密的文件列表
             const encryptedFilesResponse = await fetch("files.json.enc");
@@ -66,7 +66,7 @@
 
             try {
                 // 解密 AES 密钥
-                const aesKey = await decryptRSA(privateKeyText, encryptedKey);
+                const aesKey = await decryptRSA(privateKey, encryptedKey);
 
                 // 解密文件列表
                 const files = decryptAES(encryptedFiles, aesKey);
@@ -74,19 +74,25 @@
                 // 显示解密后的文件列表
                 document.getElementById("output").textContent = JSON.stringify(files, null, 2);
             } catch (error) {
-                document.getElementById("output").textContent = "解密失败，请检查用户名和私钥是否正确！";
+                console.error(error);
+                document.getElementById("output").textContent = "解密失败，请检查用户名和密码是否正确！";
             }
         }
 
-        async function decryptRSA(privateKeyPem, encryptedKey) {
-            // 使用 Web Crypto API 解密 RSA 密钥
-            const privateKey = await crypto.subtle.importKey(
-                "pkcs8",
-                decodeBase64(privateKeyPem),
+        async function generatePrivateKey(password) {
+            // 使用密码生成 RSA 私钥
+            const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+            return crypto.subtle.importKey(
+                "raw",
+                hash,
                 { name: "RSA-OAEP", hash: "SHA-256" },
                 false,
                 ["decrypt"]
             );
+        }
+
+        async function decryptRSA(privateKey, encryptedKey) {
+            // 使用 Web Crypto API 解密 RSA 密钥
             const decrypted = await crypto.subtle.decrypt(
                 { name: "RSA-OAEP" },
                 privateKey,
