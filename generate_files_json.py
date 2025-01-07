@@ -139,6 +139,11 @@ def encrypt_data(file_path, password, config):
             iterations=config['encryption_iterations'],  # 动态迭代次数
             backend=backend
         )
+
+
+继续完成加密逻辑的实现：
+
+```python
         key = kdf.derive(password.encode())
         # 初始化 AES 加密器
         iv = secrets.token_bytes(config['encryption_iv_length'])  # 动态 IV 长度
