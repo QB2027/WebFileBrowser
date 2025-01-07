@@ -1,6 +1,7 @@
 import json
-import os
 import oss2
+import os
+
 
 def load_config():
     """
@@ -8,6 +9,7 @@ def load_config():
     """
     with open("config.json", "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 def scan_oss_bucket(bucket, prefix="", exclude_dirs=None, exclude_files=None):
     """
@@ -28,39 +30,40 @@ def scan_oss_bucket(bucket, prefix="", exclude_dirs=None, exclude_files=None):
     objects = oss2.ObjectIterator(bucket, prefix=prefix)
 
     for obj in objects:
+        # 文件和文件夹路径分割
         path_parts = obj.key.split("/")
         name = path_parts[-1] if not obj.key.endswith("/") else path_parts[-2]
 
+        # 处理文件夹
         if obj.key.endswith("/"):
-            # 是文件夹
             if name in exclude_dirs:
                 continue
             folders.add(obj.key)
         else:
-            # 是文件
+            # 处理文件
             if name in exclude_files:
                 continue
-            parent_dir = "/".join(path_parts[:-1]) + "/"
-            signed_url = bucket.sign_url('GET', obj.key, 3600)  # 生成有效期1小时的访问链接
+            signed_url = bucket.sign_url('GET', obj.key, 3600)  # 为文件生成签名链接
             entries.append({
                 "name": name,
                 "type": "file",
-                "path": signed_url  # 替换为链接
+                "path": signed_url
             })
 
     # 递归生成目录结构
     def build_tree(path):
         children = []
-        # 添加子文件夹
+
+        # 子目录处理
         for folder in folders:
             if folder.startswith(path) and folder != path:
                 folder_name = folder[len(path):].split("/")[0]
-                folder_path = os.path.join(path, folder_name).replace("\\", "/")
+                folder_key = os.path.join(path, folder_name).replace("\\", "/")
                 if folder_name not in exclude_dirs:
                     children.append({
                         "name": folder_name,
                         "type": "directory",
-                        "path": folder_path,
+                        "path": folder_key,
                         "children": build_tree(folder)
                     })
 
