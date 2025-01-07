@@ -10,7 +10,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.serialization import load_pem_public_key, Encoding, PublicFormat
 
-
 def load_config():
     """
     加载配置文件
@@ -58,8 +57,12 @@ def encrypt_with_ecies(public_key_hex, aes_key):
     :return: 以16进制字符串表示的加密 AES 密钥
     """
     try:
-        # 使用 ecies 库的公钥进行加密，public_key_hex 是16进制的字符串
-        encrypted_aes_key = ecies.encrypt(public_key_hex, aes_key)
+        # 将16进制公钥字符串转换为字节
+        public_key_bytes = bytes.fromhex(public_key_hex)
+        
+        # 使用 ecies 库的公钥进行加密，public_key_bytes 是字节格式
+        encrypted_aes_key = ecies.encrypt(public_key_bytes, aes_key)
+        
         # 以16进制形式返回加密后的 AES 密钥
         return encrypted_aes_key.hex()
 
