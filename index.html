@@ -36,6 +36,10 @@
     .file-list a:hover {
       text-decoration: underline;
     }
+
+    .back-button {
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -51,7 +55,10 @@
     <button id="login-btn">登录</button>
   </div>
 
-  <ul class="file-list" id="file-list"></ul>
+  <div id="file-browser" style="display:none;">
+    <button id="back-button" class="back-button">返回上一级</button>
+    <ul class="file-list" id="file-list"></ul>
+  </div>
 
   <script>
     // 工具函数：SHA-256 哈希
@@ -103,26 +110,58 @@
       );
     }
 
-    // 显示文件列表
-    function displayFiles(files) {
+    // 文件层级结构显示
+    function displayFiles(files, currentPath) {
       const fileList = document.getElementById('file-list');
       fileList.innerHTML = '';
+
+      // 如果不在根目录，显示返回上一级
+      if (currentPath) {
+        const backButton = document.getElementById('back-button');
+        backButton.style.display = 'block';
+        backButton.onclick = () => {
+          const parentPath = currentPath.split('/').slice(0, -1).join('/');
+          renderDirectory(parentPath, files);
+        };
+      } else {
+        document.getElementById('back-button').style.display = 'none';
+      }
 
       files.forEach(file => {
         const listItem = document.createElement('li');
 
         if (file.type === 'file') {
           const link = document.createElement('a');
-          link.href = file.url;
+          link.href = file.path;
           link.textContent = file.name;
           link.target = '_blank';
           listItem.appendChild(link);
-        } else if (file.type === 'folder') {
-          listItem.textContent = file.name + '/';
+        } else if (file.type === 'directory') {
+          const folderLink = document.createElement('a');
+          folderLink.href = '#';
+          folderLink.textContent = file.name + '/';
+          folderLink.onclick = (e) => {
+            e.preventDefault();
+            renderDirectory(file.path, files);
+          };
+          listItem.appendChild(folderLink);
         }
 
         fileList.appendChild(listItem);
       });
+    }
+
+    // 递归渲染目录
+    function renderDirectory(currentPath, fullStructure) {
+      const segments = currentPath.split('/').filter(Boolean);
+
+      let currentLevel = fullStructure;
+      segments.forEach(segment => {
+        const found = currentLevel.find(item => item.name === segment && item.type === 'directory');
+        if (found) currentLevel = found.children || [];
+      });
+
+      displayFiles(currentLevel, currentPath);
     }
 
     // 用户登录和解密流程
@@ -136,7 +175,7 @@
       }
 
       try {
-        // 验证用户名和密码
+        // 加载用户哈希列表
         const response = await fetch('users.json'); // 加载用户信息文件
         const users = await response.json();
 
@@ -146,8 +185,8 @@
           return;
         }
 
-        // 加载加密的文件数据
-        const encResponse = await fetch('files.json.enc');
+        // 加载加密文件
+        const encResponse = await fetch(`files_${username}.json.enc`);
         const encText = await encResponse.text();
         const encBytes = new Uint8Array(atob(encText).split('').map(c => c.charCodeAt(0)));
 
@@ -162,7 +201,13 @@
 
         // 解析解密后的 JSON 数据
         const files = JSON.parse(new TextDecoder().decode(decryptedData));
-        displayFiles(files);
+
+        // 隐藏登录表单并显示文件浏览器
+        document.querySelector('.login-form').style.display = 'none';
+        document.getElementById('file-browser').style.display = 'block';
+
+        // 渲染文件结构
+        renderDirectory('', files);
       } catch (error) {
         console.error(error);
         alert('加载文件列表时出错：解密失败，请检查密码是否正确。');
