@@ -1,5 +1,7 @@
 // scripts/main.js
 
+let currentPath = ''; // 当前目录路径
+
 // 登录函数
 async function login() {
   const username = document.getElementById('username').value;
@@ -55,22 +57,76 @@ async function fetchFiles() {
       throw new Error('无法加载文件列表');
     }
     const files = await response.json();
-    displayFiles(files);
+    displayFiles(files, currentPath);
   } catch (error) {
     console.error('Error:', error);
     document.querySelector('.file-list').innerHTML = '<li>加载文件列表时出错。</li>';
   }
 }
 
-// 显示文件列表
-function displayFiles(files) {
+// 显示文件和文件夹列表
+function displayFiles(files, path) {
   const container = document.querySelector('.file-list');
+  const breadcrumb = document.getElementById('breadcrumb');
   container.innerHTML = '';
+  breadcrumb.innerHTML = '';
 
-  files.forEach(item => {
-    if (item.type === 'file') {
-      container.innerHTML += `<li class="file-item"><a href="${item.url}" target="_blank">${item.name}</a></li>`;
+  // 生成导航路径
+  const pathParts = path.split('/').filter(part => part);
+  let accumulatedPath = '';
+  const breadcrumbList = [];
+
+  // 添加“首页”链接
+  breadcrumbList.push({ name: '首页', path: '' });
+
+  pathParts.forEach(part => {
+    accumulatedPath += part + '/';
+    breadcrumbList.push({ name: part, path: accumulatedPath });
+  });
+
+  // 渲染导航路径
+  breadcrumbList.forEach((crumb, index) => {
+    const crumbLink = document.createElement('a');
+    crumbLink.href = '#';
+    crumbLink.innerText = crumb.name;
+    crumbLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      currentPath = crumb.path;
+      fetchFiles();
+    });
+    breadcrumb.appendChild(crumbLink);
+    if (index < breadcrumbList.length - 1) {
+      const separator = document.createElement('span');
+      separator.innerText = ' / ';
+      breadcrumb.appendChild(separator);
     }
+  });
+
+  // 过滤当前目录下的文件和文件夹
+  const items = files.filter(item => {
+    const itemPath = item.path;
+    if (currentPath === '') {
+      return !itemPath.includes('/') || itemPath.indexOf('/') === itemPath.length - 1;
+    }
+    return itemPath.startsWith(currentPath) && itemPath.split('/').filter(part => part).length === currentPath.split('/').filter(part => part).length + (item.type === 'folder' ? 1 : 0);
+  });
+
+  // 处理文件夹和文件
+  items.forEach(item => {
+    const listItem = document.createElement('li');
+    listItem.classList.add('file-item');
+
+    if (item.type === 'folder') {
+      listItem.innerHTML = `<span class="folder" data-path="${item.path}">📁 ${item.name}</span>`;
+      listItem.querySelector('.folder').addEventListener('click', () => {
+        currentPath = item.path.endsWith('/') ? item.path : item.path + '/';
+        fetchFiles();
+      });
+    } else if (item.type === 'file') {
+      listItem.innerHTML = `<span>📄 ${item.name}</span> <a href="${item.url}" target="_blank">下载</a>`;
+    }
+
+    container.appendChild(listItem);
   });
 }
 
