@@ -8,14 +8,15 @@
  */
 export async function decryptData(encryptedData, password) {
   const backend = crypto.subtle;
-  const encryptedBytes = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+  const binaryString = atob(encryptedData);
+  const encryptedBytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0)));
 
   // 提取盐、IV和密文
   const salt = encryptedBytes.slice(0, 16);
   const iv = encryptedBytes.slice(16, 32);
   const ciphertext = encryptedBytes.slice(32);
 
-  // 派生密钥
+  // 导入密码为原始密钥材料
   const keyMaterial = await backend.importKey(
     'raw',
     new TextEncoder().encode(password),
@@ -24,6 +25,7 @@ export async function decryptData(encryptedData, password) {
     ['deriveKey']
   );
 
+  // 使用 PBKDF2 派生出 AES-CFB 密钥
   const key = await backend.deriveKey(
     {
       name: 'PBKDF2',
