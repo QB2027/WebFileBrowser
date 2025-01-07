@@ -6,5 +6,7 @@
   "encryption_iv_length": 16,
   "encryption_password_env": "ENCRYPTION_PASSWORD",
   "oss_access_key_id_env": "OSS_ACCESS_KEY_ID",
-  "oss_access_key_secret_env": "OSS_ACCESS_KEY_SECRET"
+  "oss_access_key_secret_env": "OSS_ACCESS_KEY_SECRET",
+  "exclude_dirs": [".git", "__pycache__"],
+  "exclude_files": ["README.md", ".gitignore"]
 }
