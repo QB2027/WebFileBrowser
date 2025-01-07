@@ -1,13 +1,12 @@
 import json
 import oss2
 import os
-from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import base64
 import secrets
-import sys
 
 
 def main():
@@ -32,55 +31,17 @@ def main():
         auth = oss2.Auth(access_key_id, access_key_secret)
         bucket = oss2.Bucket(auth, endpoint, bucket_name)
 
-        # 要扫描的目录前缀（根目录为空字符串）
-        prefix = ''
-
-        # 获取所有文件和文件夹列表
-        file_list = []
-        folders = set()
-
+        # 获取所有文件和文件夹列表并生成目录结构
         print("Scanning OSS bucket for files and folders...")
-        for obj in oss2.ObjectIterator(bucket, prefix=prefix):
-            if obj.key.endswith('/'):
-                # 识别为文件夹
-                folders.add(obj.key)
-            else:
-                # 识别为文件
-                # 确定文件所属的文件夹
-                folder_path = os.path.dirname(obj.key) + '/'
-                if folder_path != '/':
-                    folders.add(folder_path)
-                # 生成预签名 URL，有效期为1小时
-                try:
-                    url = bucket.sign_url('GET', obj.key, 3600)
-                except Exception as e:
-                    print(f"Error generating pre-signed URL for {obj.key}: {e}")
-                    continue
-                file_list.append({
-                    'name': os.path.basename(obj.key),
-                    'path': obj.key,
-                    'url': url,
-                    'type': 'file'
-                })
+        root_structure = build_directory_structure(bucket)
 
-        # 添加文件夹到列表
-        for folder in folders:
-            if folder == prefix:
-                continue  # 跳过根目录
-            file_list.append({
-                'name': os.path.basename(folder.rstrip('/')),
-                'path': folder,
-                'url': '',
-                'type': 'folder'
-            })
-
-        # 将文件和文件夹列表写入 files.json
+        # 将目录结构写入 JSON 文件
         with open('files.json', 'w', encoding='utf-8') as f:
-            json.dump(file_list, f, ensure_ascii=False, indent=2)
+            json.dump(root_structure, f, ensure_ascii=False, indent=2)
 
         print('files.json 已生成。')
 
-        # 读取用户信息并生成加密文件
+        # 读取用户信息并为每个用户生成加密文件
         with open('users.json', 'r', encoding='utf-8') as f:
             users = json.load(f)
 
@@ -114,6 +75,57 @@ def load_config():
             return json.load(f)
     except Exception as e:
         raise ValueError(f"Failed to load config.json: {e}")
+
+
+def build_directory_structure(bucket, prefix=''):
+    """
+    构建 OSS 存储桶的目录结构，文件带有签名 URL
+    """
+    directory_structure = []
+    objects = oss2.ObjectIterator(bucket, prefix=prefix)
+
+    # 使用临时存储路径的文件和目录
+    files_map = {}
+    directories = set()
+
+    for obj in objects:
+        # 如果是文件夹，添加到目录集合
+        if obj.key.endswith('/'):
+            directories.add(obj.key)
+        else:
+            # 是文件，生成签名 URL
+            signed_url = bucket.sign_url('GET', obj.key, 3600)  # 有效期1小时
+            parent_dir = os.path.dirname(obj.key) + '/'
+            if parent_dir not in files_map:
+                files_map[parent_dir] = []
+            files_map[parent_dir].append({
+                "name": os.path.basename(obj.key),
+                "type": "file",
+                "path": signed_url
+            })
+
+    # 递归生成目录结构
+    def build_tree(path):
+        children = []
+
+        # 处理子文件夹
+        for directory in directories:
+            if os.path.dirname(directory).rstrip('/') == path.rstrip('/'):
+                children.append({
+                    "name": os.path.basename(directory.rstrip('/')),
+                    "type": "directory",
+                    "path": directory.rstrip('/'),
+                    "children": build_tree(directory)
+                })
+
+        # 添加文件
+        if path in files_map:
+            children.extend(files_map[path])
+
+        return children
+
+    # 构建根目录结构
+    return build_tree('')
 
 
 def encrypt_data(file_path, password_hash, config):
