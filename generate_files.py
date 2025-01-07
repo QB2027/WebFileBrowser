@@ -57,9 +57,13 @@ def encrypt_with_ecies(public_key_hex, aes_key):
     :return: 以16进制字符串表示的加密 AES 密钥
     """
     try:
+        print(f"开始解析公钥：{public_key_hex[:50]}...")  # 输出前50个字符用于调试
         # 将16进制公钥字符串转换为字节
         public_key_bytes = bytes.fromhex(public_key_hex)
         
+        # 输出公钥字节长度和内容
+        print(f"解析后的公钥字节长度：{len(public_key_bytes)}，前20个字节：{public_key_bytes[:20]}")
+
         # 使用 ecies 库的公钥进行加密，public_key_bytes 是字节格式
         encrypted_aes_key = ecies.encrypt(public_key_bytes, aes_key)
         
@@ -67,6 +71,7 @@ def encrypt_with_ecies(public_key_hex, aes_key):
         return encrypted_aes_key.hex()
 
     except Exception as e:
+        print(f"ECIES 加密失败：{e}")
         raise ValueError(f"ECIES 加密失败，请检查公钥是否正确：{e}")
 
 
@@ -151,6 +156,7 @@ def main():
         encrypted_keys = {}
         for username, public_key_hex in users.items():
             try:
+                print(f"正在加密用户 {username} 的 AES 密钥...")
                 encrypted_key = encrypt_with_ecies(public_key_hex, aes_key)
                 encrypted_keys[username] = encrypted_key
             except ValueError as e:
