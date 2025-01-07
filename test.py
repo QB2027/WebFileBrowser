@@ -2,7 +2,7 @@ import ecies
 
 # 生成以太坊密钥对
 private_key = ecies.utils.generate_eth_key()
-public_key = private_key.public_key()
+public_key = private_key.public_key  # 不需要调用，直接访问
 
 # 待加密的消息
 message = b"Hello, this is a secret message!"
