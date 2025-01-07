@@ -1,7 +1,6 @@
 import json
 import oss2
 import os
-import base64
 import secrets
 import ecies
 from cryptography.hazmat.primitives import hashes
@@ -9,6 +8,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.serialization import load_pem_public_key, Encoding, PublicFormat
+
 
 def load_config():
     """
@@ -20,17 +21,17 @@ def load_config():
 
 def load_aes_key():
     """
-    从环境变量中加载 Base64 编码的 AES 密钥，并解码为原始 32 字节密钥
+    从环境变量中加载16进制 AES 密钥，并将其转换为字节
     """
     encryption_password = os.getenv("ENCRYPTION_PASSWORD")
     if not encryption_password:
         raise ValueError("环境变量 ENCRYPTION_PASSWORD 未设置")
 
     try:
-        # 尝试将 Base64 编码的密钥解码为原始字节
-        key = base64.b64decode(encryption_password)
+        # 尝试将16进制编码的密钥转换为字节
+        key = bytes.fromhex(encryption_password)
     except Exception:
-        raise ValueError("无法解码 ENCRYPTION_PASSWORD，请确保它是 Base64 编码的字符串")
+        raise ValueError("无法转换 ENCRYPTION_PASSWORD，请确保它是16进制字符串")
 
     if len(key) != 32:
         raise ValueError("解码后的 AES 密钥必须为 32 字节（256 位）")
@@ -48,19 +49,16 @@ def encrypt_aes(data, key):
     return base64.b64encode(iv + encrypted_data).decode("utf-8")
 
 
-def encrypt_with_ecies(public_key_pem, aes_key):
+def encrypt_with_ecies(public_key_hex, aes_key):
     """
     使用 ECIES 加密 AES 密钥
-    :param public_key_pem: 用户的 EC 公钥（PEM 格式字符串）
+    :param public_key_hex: 用户的 EC 公钥（16进制字符串）
     :param aes_key: AES 密钥（字节数据）
     :return: Base64 编码的加密 AES 密钥
     """
     try:
-        # 加载 EC 公钥
-        public_key = ecies.utils.deserialize_public(public_key_pem.encode('utf-8'))
-
-        # 使用 ECIES 加密 AES 密钥
-        encrypted_aes_key = ecies.encrypt(public_key, aes_key)
+        # 使用 ecies 库的公钥进行加密，public_key_hex 是16进制的字符串
+        encrypted_aes_key = ecies.encrypt(public_key_hex, aes_key)
 
         # 返回加密后的 AES 密钥（Base64 编码）
         return base64.b64encode(encrypted_aes_key).decode("utf-8")
@@ -149,9 +147,9 @@ def main():
 
         # 用每个用户的 EC 公钥加密 AES 密钥
         encrypted_keys = {}
-        for username, public_key_pem in users.items():
+        for username, public_key_hex in users.items():
             try:
-                encrypted_key = encrypt_with_ecies(public_key_pem, aes_key)
+                encrypted_key = encrypt_with_ecies(public_key_hex, aes_key)
                 encrypted_keys[username] = encrypted_key
             except ValueError as e:
                 print(f"跳过用户 {username} 的加密，原因：{e}")
