@@ -1,18 +1,86 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>File Browser</title>
-  <!-- 引入外部CSS -->
-  <link rel="stylesheet" href="styles/main.css">
-</head>
-<body>
-  <ul class="file-list">
-    <!-- 文件 / 目录 列表将由JS动态填充 -->
-  </ul>
+/* styles/main.css */
 
-  <!-- 使用 ES Module 方式导入入口脚本 -->
-  <script type="module" src="scripts/main.js"></script>
-</body>
-</html>
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+
+h1, h2 {
+  text-align: center;
+}
+
+#login-form, #download-section {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+#login-form input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+#login-form button {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#login-form button:hover {
+  background-color: #0056b3;
+}
+
+.error-message {
+  color: red;
+  text-align: center;
+}
+
+#breadcrumb {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+#breadcrumb a {
+  text-decoration: none;
+  color: #007bff;
+  cursor: pointer;
+}
+
+#breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.file-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.file-item, .directory-item, .back-button {
+  padding: 5px 0;
+}
+
+.directory-item a, .back-button a {
+  text-decoration: none;
+  color: #28a745;
+  cursor: pointer;
+}
+
+.directory-item a:hover, .back-button a:hover {
+  text-decoration: underline;
+}
+
+.file-item a {
+  text-decoration: none;
+  color: #17a2b8;
+}
+
+.file-item a:hover {
+  text-decoration: underline;
+}
