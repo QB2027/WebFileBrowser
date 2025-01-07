@@ -26,15 +26,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install oss2 pynacl
 
-      - name: Generate Encrypted Files
+      - name: Generate Files
         env:
           OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
           ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
         run: |
-          python generate_encrypted_files.py
+          python generate_files.py
 
-      - name: Commit and Push Encrypted Files
+      - name: Commit and Push Files
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
