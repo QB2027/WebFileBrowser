@@ -1,0 +1,37 @@
+name: Generate Files JSON
+
+on:
+  push:
+    branches:
+      - master  # 或你的主要分支名称
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install oss2
+
+      - name: Generate files.json
+        env:
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+        run: |
+          python generate_files_json.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "gitee-ci"
+          git config --global user.email "ci@gitee.com"
+          git add files.json
+          git commit -m "Update files.json"
+          git push origin master
