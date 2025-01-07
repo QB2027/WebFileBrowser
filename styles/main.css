@@ -6,81 +6,54 @@ body {
 }
 
 h1, h2 {
-  text-align: center;
+  color: #333;
 }
 
 #login-form, #download-section {
-  max-width: 600px;
-  margin: 20px auto;
-  padding: 20px;
   border: 1px solid #ccc;
+  padding: 20px;
   border-radius: 5px;
+  max-width: 400px;
 }
 
-#login-form input {
+input[type="text"], input[type="password"] {
   width: 100%;
-  padding: 10px;
-  margin: 10px 0;
+  padding: 8px;
+  margin: 8px 0;
+  box-sizing: border-box;
 }
 
-#login-form button {
-  width: 100%;
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
+button {
+  padding: 10px 20px;
+  background-color: #28a745;
   border: none;
-  border-radius: 5px;
+  color: white;
   cursor: pointer;
+  border-radius: 3px;
 }
 
-#login-form button:hover {
-  background-color: #0056b3;
+button:hover {
+  background-color: #218838;
 }
 
 .error-message {
   color: red;
-  text-align: center;
-}
-
-#breadcrumb {
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-#breadcrumb a {
-  text-decoration: none;
-  color: #007bff;
-  cursor: pointer;
-}
-
-#breadcrumb a:hover {
-  text-decoration: underline;
 }
 
 .file-list {
   list-style-type: none;
-  padding-left: 0;
+  padding: 0;
 }
 
-.file-item, .directory-item, .back-button {
+.file-list li {
   padding: 5px 0;
 }
 
-.directory-item a, .back-button a {
-  text-decoration: none;
-  color: #28a745;
+.file-list li.directory-item .folder {
   cursor: pointer;
+  color: #007bff;
 }
 
-.directory-item a:hover, .back-button a:hover {
-  text-decoration: underline;
-}
-
-.file-item a {
-  text-decoration: none;
-  color: #17a2b8;
-}
-
-.file-item a:hover {
+.file-list li.directory-item .folder:hover {
   text-decoration: underline;
 }
