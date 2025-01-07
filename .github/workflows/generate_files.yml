@@ -1,4 +1,4 @@
-name: Generate Encrypted Files
+name: Generate Files
 
 on:
   schedule:
