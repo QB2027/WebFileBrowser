@@ -1,12 +1,6 @@
 {
   "bucket_name": "qb2027-files",
   "endpoint": "oss-cn-shanghai.aliyuncs.com",
-  "encryption_iterations": 100000,
-  "encryption_salt_length": 16,
-  "encryption_iv_length": 16,
-  "encryption_password_env": "ENCRYPTION_PASSWORD",
-  "oss_access_key_id_env": "OSS_ACCESS_KEY_ID",
-  "oss_access_key_secret_env": "OSS_ACCESS_KEY_SECRET",
   "exclude_dirs": [],
   "exclude_files": []
 }
