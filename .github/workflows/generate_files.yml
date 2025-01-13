@@ -24,7 +24,7 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install oss2 cryptography eciespy  # 安装需要的依赖库
+          pip install oss2 cryptography  # 安装需要的依赖库
 
       - name: Generate Files
         env:
@@ -32,8 +32,7 @@ jobs:
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
           ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
         run: |
-          python test.py
-          python generate_files.py  # 生成并加密文件结构
+          python generate_enc_json.py  # 生成并加密文件结构
 
 
       - name: Commit and Push Files
