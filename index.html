@@ -50,9 +50,7 @@
     <ul class="file-list"></ul>
   </div>
 
-  <script type="module">
-    import { decryptAES, loadUsers, decryptFilesJson } from './utils.js';
-
+  <script>
     document.getElementById('decryptButton').addEventListener('click', async () => {
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
@@ -87,6 +85,87 @@
       }
     });
 
+    async function loadUsers() {
+      const response = await fetch('./users_enc_aes_key.json');
+      if (!response.ok) {
+        throw new Error('无法加载 users_enc_aes_key.json');
+      }
+      return response.json();
+    }
+
+    function decryptAES(privEnc, encAesKey, password) {
+      // 解密私钥
+      const privateKey = decryptPrivateKey(privEnc, password);
+
+      // 解密 AES 密钥
+      const encryptedKeyBuffer = Uint8Array.from(atob(encAesKey), c => c.charCodeAt(0));
+      return decryptWithPrivateKey(privateKey, encryptedKeyBuffer);
+    }
+
+    async function decryptFilesJson(aesKey) {
+      const response = await fetch('./files.json.enc');
+      if (!response.ok) {
+        throw new Error('无法加载 files.json.enc');
+      }
+
+      const encryptedData = await response.arrayBuffer();
+      const decryptedData = decryptWithAES(aesKey, new Uint8Array(encryptedData));
+      return JSON.parse(new TextDecoder().decode(decryptedData));
+    }
+
+    function decryptPrivateKey(privEnc, password) {
+      // 使用密码解密 RSA 私钥
+      const encryptedKeyBuffer = Uint8Array.from(atob(privEnc), c => c.charCodeAt(0));
+      const aesKey = crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+      return crypto.subtle.importKey(
+        "raw",
+        aesKey,
+        { name: "AES-CBC" },
+        false,
+        ["decrypt"]
+      ).then(aesCryptoKey => {
+        const iv = encryptedKeyBuffer.slice(0, 16);
+        const encryptedPrivateKey = encryptedKeyBuffer.slice(16);
+        return crypto.subtle.decrypt(
+          { name: "AES-CBC", iv: iv },
+          aesCryptoKey,
+          encryptedPrivateKey
+        );
+      }).then(decryptedPrivateKeyBuffer => {
+        return crypto.subtle.importKey(
+          "pkcs8",
+          decryptedPrivateKeyBuffer,
+          { name: "RSA-OAEP", hash: "SHA-256" },
+          true,
+          ["decrypt"]
+        );
+      });
+    }
+
+    function decryptWithPrivateKey(privateKey, encryptedKeyBuffer) {
+      return crypto.subtle.decrypt(
+        {
+          name: "RSA-OAEP",
+          hash: "SHA-256"
+        },
+        privateKey,
+        encryptedKeyBuffer
+      );
+    }
+
+    function decryptWithAES(aesKey, encryptedData) {
+      const iv = encryptedData.slice(0, 16);
+      const cipherText = encryptedData.slice(16);
+      return crypto.subtle.decrypt(
+        {
+          name: "AES-CBC",
+          iv: iv
+        },
+        aesKey,
+        cipherText
+      );
+    }
+
     function renderFileList(files) {
       const container = document.querySelector('.file-list');
       container.innerHTML = generateFileList(files, '');
@@ -102,49 +181,6 @@
         });
         return html;
       }
-    }
-  </script>
-  <script type="module">
-    // utils.js
-
-    export async function loadUsers() {
-      const response = await fetch('./users_enc_aes_key.json');
-      if (!response.ok) {
-        throw new Error('无法加载 users_enc_aes_key.json');
-      }
-      return response.json();
-    }
-
-    export function decryptAES(privEnc, encAesKey, password) {
-      const privateKey = decryptPrivateKey(privEnc, password);
-      return decryptWithPrivateKey(privateKey, encAesKey);
-    }
-
-    export async function decryptFilesJson(aesKey) {
-      const response = await fetch('./files.json.enc');
-      if (!response.ok) {
-        throw new Error('无法加载 files.json.enc');
-      }
-
-      const encryptedData = await response.arrayBuffer();
-      const decryptedData = decryptWithAES(aesKey, new Uint8Array(encryptedData));
-      return JSON.parse(new TextDecoder().decode(decryptedData));
-    }
-
-    function decryptPrivateKey(privEnc, password) {
-      // TODO: 替换为实际解密私钥逻辑
-      // 解密 privEnc 使用 password
-      return 'mock-private-key';
-    }
-
-    function decryptWithPrivateKey(privateKey, encAesKey) {
-      // TODO: 替换为实际使用私钥解密 AES 密钥的逻辑
-      return 'mock-aes-key';
-    }
-
-    function decryptWithAES(aesKey, encryptedData) {
-      // TODO: 替换为实际的 AES 解密逻辑
-      return encryptedData;
     }
   </script>
 </body>
