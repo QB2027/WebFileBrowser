@@ -6,8 +6,8 @@
 </head>
 <body>
   <h1>解密 AES 密钥</h1>
-  <input type="text" id="username" placeholder="用户名">
-  <input type="password" id="password" placeholder="密码">
+  <input type="text" id="username" placeholder="请输入用户名">
+  <input type="password" id="password" placeholder="请输入密码">
   <button id="decryptButton">解密</button>
   <pre id="output"></pre>
 
@@ -39,7 +39,7 @@
         document.getElementById('output').textContent = `解密后的 AES 密钥: ${arrayBufferToBase64(aesKey)}`;
       } catch (error) {
         console.error(error);
-        document.getElementById('output').textContent = '解密失败';
+        document.getElementById('output').textContent = `解密失败: ${error.message}`;
       }
     });
 
