@@ -103,8 +103,9 @@ def main():
         exclude_dirs = set(config.get("exclude_dirs", []))
         exclude_files = set(config.get("exclude_files", []))
 
-        access_key_id = os.getenv(config["oss_access_key_id_env"])
-        access_key_secret = os.getenv(config["oss_access_key_secret_env"])
+        # 从环境变量获取 OSS 凭证
+        access_key_id = os.getenv("OSS_ACCESS_KEY_ID")
+        access_key_secret = os.getenv("OSS_ACCESS_KEY_SECRET")
 
         if not access_key_id or not access_key_secret:
             raise ValueError("OSS credentials are not set in the environment variables.")
