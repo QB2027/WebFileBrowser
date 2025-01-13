@@ -29,8 +29,16 @@
           return;
         }
 
-        const privateKey = await decryptPrivateKey(userData.priv_enc, password);
-        document.getElementById('output').textContent = `解密后的 RSA 私钥: ${privateKey}`;
+        const decryptedPrivateKey = await decryptPrivateKey(userData.priv_enc, password);
+
+        // 输出解密后的 RSA 私钥（原始 JSON 模式）
+        const output = {
+          username: username,
+          priv_key: decryptedPrivateKey,
+          enc_aes_key: userData.enc_aes_key
+        };
+
+        document.getElementById('output').textContent = JSON.stringify(output, null, 2);
       } catch (error) {
         console.error(error);
         document.getElementById('output').textContent = '解密失败';
@@ -43,11 +51,16 @@
       return response.json();
     }
 
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      return btoa(String.fromCharCode.apply(null, bytes));
+    }
+
     async function decryptPrivateKey(privEnc, password) {
-      const encryptedKey = Uint8Array.from(atob(privEnc), c => c.charCodeAt(0));
+      const encryptedPrivKeyBuffer = Uint8Array.from(atob(privEnc), c => c.charCodeAt(0));
       const aesKey = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
-      const iv = encryptedKey.slice(0, 16);
-      const keyData = encryptedKey.slice(16);
+      const iv = encryptedPrivKeyBuffer.slice(0, 16);
+      const encryptedKeyData = encryptedPrivKeyBuffer.slice(16);
 
       const aesCryptoKey = await crypto.subtle.importKey(
         "raw",
@@ -60,10 +73,10 @@
       const decryptedKey = await crypto.subtle.decrypt(
         { name: "AES-CBC", iv: iv },
         aesCryptoKey,
-        keyData
+        encryptedKeyData
       );
 
-      return new TextDecoder().decode(decryptedKey);
+      return arrayBufferToBase64(decryptedKey); // 原始私钥以 Base64 格式返回
     }
   </script>
 </body>
