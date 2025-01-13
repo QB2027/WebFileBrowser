@@ -1,9 +1,6 @@
 name: Encrypt AES Key with RSA
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch: # 支持手动触发
 
 jobs:
