@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>钱班文件下载</title>
+  <title>解密 AES 密钥</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -19,67 +19,54 @@
       margin: 0 auto;
       padding: 20px;
     }
-    .file-list {
-      list-style: none;
-      padding: 0;
-    }
-    .file-list li {
-      margin: 10px 0;
-    }
-    .file-list a {
-      text-decoration: none;
-      color: #007BFF;
-    }
-    .file-list a:hover {
-      text-decoration: underline;
-    }
     input, button {
       padding: 10px;
-      margin: 5px 0;
+      margin: 10px 0;
       width: 100%;
       box-sizing: border-box;
+    }
+    pre {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border: 1px solid #ddd;
+      overflow-x: auto;
     }
   </style>
 </head>
 <body>
-  <h1>钱班文件下载</h1>
+  <h1>解密 AES 密钥</h1>
   <div class="container">
-    <input type="text" id="username" placeholder="请输入用户名" />
     <input type="password" id="password" placeholder="请输入密码" />
-    <button id="decryptButton">解密文件</button>
-    <ul class="file-list"></ul>
+    <button id="decryptButton">解密 AES 密钥</button>
+    <pre id="output"></pre>
   </div>
 
   <script type="module">
     document.getElementById('decryptButton').addEventListener('click', async () => {
-      const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
 
-      if (!username || !password) {
-        alert('请输入用户名和密码');
+      if (!password) {
+        alert('请输入密码');
         return;
       }
 
       try {
-        // 加载用户数据
+        // 从本地文件加载用户数据
         const users = await loadUsers();
-        const userData = users[username];
+        const userData = Object.values(users)[0]; // 取第一个用户数据
+
         if (!userData) {
-          alert('用户名不存在');
-          return;
+          throw new Error('用户数据不存在');
         }
 
         // 解密 AES 密钥
         const aesKey = await decryptAESKey(userData.enc_aes_key, userData.priv_enc, password);
 
-        // 解密 files.json.enc
-        const files = await decryptFilesJson(aesKey);
-
-        // 渲染文件列表
-        renderFileList(files);
+        // 显示解密后的 AES 密钥
+        document.getElementById('output').textContent = `解密后的 AES 密钥: ${btoa(String.fromCharCode(...new Uint8Array(aesKey)))}`;
       } catch (error) {
         console.error(error);
-        alert('解密失败，请检查用户名、密码和文件状态');
+        document.getElementById('output').textContent = '解密失败，请检查密码和文件内容';
       }
     });
 
@@ -97,7 +84,7 @@
 
       // 解密加密的 AES 密钥
       const encryptedAesKeyBuffer = Uint8Array.from(atob(encAesKey), c => c.charCodeAt(0));
-      const decryptedAesKey = await crypto.subtle.decrypt(
+      return await crypto.subtle.decrypt(
         {
           name: "RSA-OAEP",
           hash: "SHA-256",
@@ -105,8 +92,6 @@
         privateKey,
         encryptedAesKeyBuffer
       );
-
-      return decryptedAesKey;
     }
 
     async function decryptPrivateKey(privEnc, password) {
@@ -136,50 +121,6 @@
         true,
         ["decrypt"]
       );
-    }
-
-    async function decryptFilesJson(aesKey) {
-      const response = await fetch('./files.json.enc');
-      if (!response.ok) {
-        throw new Error('无法加载 files.json.enc');
-      }
-
-      const encryptedData = await response.arrayBuffer();
-      const iv = new Uint8Array(encryptedData.slice(0, 16));
-      const cipherText = new Uint8Array(encryptedData.slice(16));
-
-      const aesCryptoKey = await crypto.subtle.importKey(
-        "raw",
-        aesKey,
-        { name: "AES-CBC" },
-        false,
-        ["decrypt"]
-      );
-
-      const decryptedData = await crypto.subtle.decrypt(
-        { name: "AES-CBC", iv: iv },
-        aesCryptoKey,
-        cipherText
-      );
-
-      return JSON.parse(new TextDecoder().decode(decryptedData));
-    }
-
-    function renderFileList(files) {
-      const container = document.querySelector('.file-list');
-      container.innerHTML = generateFileList(files, '');
-
-      function generateFileList(files, basePath) {
-        let html = '';
-        files.forEach(item => {
-          if (item.type === 'file') {
-            html += `<li><a href="${item.path}" target="_blank">${item.name}</a></li>`;
-          } else if (item.type === 'directory') {
-            html += `<li>${item.name}/<ul>${generateFileList(item.children, `${basePath}/${item.name}`)}</ul></li>`;
-          }
-        });
-        return html;
-      }
     }
   </script>
 </body>
