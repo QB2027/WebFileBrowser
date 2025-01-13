@@ -50,7 +50,7 @@
     <ul class="file-list"></ul>
   </div>
 
-  <script>
+  <script type="module">
     document.getElementById('decryptButton').addEventListener('click', async () => {
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
@@ -63,8 +63,6 @@
       try {
         // 加载用户数据
         const users = await loadUsers();
-
-        // 获取对应用户的加密 AES 密钥和加密私钥
         const userData = users[username];
         if (!userData) {
           alert('用户名不存在');
@@ -72,7 +70,7 @@
         }
 
         // 解密 AES 密钥
-        const aesKey = decryptAES(userData.priv_enc, userData.enc_aes_key, password);
+        const aesKey = await decryptAESKey(userData.enc_aes_key, userData.priv_enc, password);
 
         // 解密 files.json.enc
         const files = await decryptFilesJson(aesKey);
@@ -93,13 +91,51 @@
       return response.json();
     }
 
-    function decryptAES(privEnc, encAesKey, password) {
-      // 解密私钥
-      const privateKey = decryptPrivateKey(privEnc, password);
+    async function decryptAESKey(encAesKey, privEnc, password) {
+      // 使用密码解密加密的 RSA 私钥
+      const privateKey = await decryptPrivateKey(privEnc, password);
 
-      // 解密 AES 密钥
-      const encryptedKeyBuffer = Uint8Array.from(atob(encAesKey), c => c.charCodeAt(0));
-      return decryptWithPrivateKey(privateKey, encryptedKeyBuffer);
+      // 解密加密的 AES 密钥
+      const encryptedAesKeyBuffer = Uint8Array.from(atob(encAesKey), c => c.charCodeAt(0));
+      const decryptedAesKey = await crypto.subtle.decrypt(
+        {
+          name: "RSA-OAEP",
+          hash: "SHA-256",
+        },
+        privateKey,
+        encryptedAesKeyBuffer
+      );
+
+      return decryptedAesKey;
+    }
+
+    async function decryptPrivateKey(privEnc, password) {
+      const encryptedPrivKeyBuffer = Uint8Array.from(atob(privEnc), c => c.charCodeAt(0));
+      const aesKey = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+      const iv = encryptedPrivKeyBuffer.slice(0, 16);
+      const encryptedKeyData = encryptedPrivKeyBuffer.slice(16);
+
+      const aesCryptoKey = await crypto.subtle.importKey(
+        "raw",
+        aesKey,
+        { name: "AES-CBC" },
+        false,
+        ["decrypt"]
+      );
+
+      const decryptedPrivKey = await crypto.subtle.decrypt(
+        { name: "AES-CBC", iv: iv },
+        aesCryptoKey,
+        encryptedKeyData
+      );
+
+      return crypto.subtle.importKey(
+        "pkcs8",
+        decryptedPrivKey,
+        { name: "RSA-OAEP", hash: "SHA-256" },
+        true,
+        ["decrypt"]
+      );
     }
 
     async function decryptFilesJson(aesKey) {
@@ -109,61 +145,24 @@
       }
 
       const encryptedData = await response.arrayBuffer();
-      const decryptedData = decryptWithAES(aesKey, new Uint8Array(encryptedData));
-      return JSON.parse(new TextDecoder().decode(decryptedData));
-    }
+      const iv = new Uint8Array(encryptedData.slice(0, 16));
+      const cipherText = new Uint8Array(encryptedData.slice(16));
 
-    function decryptPrivateKey(privEnc, password) {
-      // 使用密码解密 RSA 私钥
-      const encryptedKeyBuffer = Uint8Array.from(atob(privEnc), c => c.charCodeAt(0));
-      const aesKey = crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
-      return crypto.subtle.importKey(
+      const aesCryptoKey = await crypto.subtle.importKey(
         "raw",
         aesKey,
         { name: "AES-CBC" },
         false,
         ["decrypt"]
-      ).then(aesCryptoKey => {
-        const iv = encryptedKeyBuffer.slice(0, 16);
-        const encryptedPrivateKey = encryptedKeyBuffer.slice(16);
-        return crypto.subtle.decrypt(
-          { name: "AES-CBC", iv: iv },
-          aesCryptoKey,
-          encryptedPrivateKey
-        );
-      }).then(decryptedPrivateKeyBuffer => {
-        return crypto.subtle.importKey(
-          "pkcs8",
-          decryptedPrivateKeyBuffer,
-          { name: "RSA-OAEP", hash: "SHA-256" },
-          true,
-          ["decrypt"]
-        );
-      });
-    }
-
-    function decryptWithPrivateKey(privateKey, encryptedKeyBuffer) {
-      return crypto.subtle.decrypt(
-        {
-          name: "RSA-OAEP",
-          hash: "SHA-256"
-        },
-        privateKey,
-        encryptedKeyBuffer
       );
-    }
 
-    function decryptWithAES(aesKey, encryptedData) {
-      const iv = encryptedData.slice(0, 16);
-      const cipherText = encryptedData.slice(16);
-      return crypto.subtle.decrypt(
-        {
-          name: "AES-CBC",
-          iv: iv
-        },
-        aesKey,
+      const decryptedData = await crypto.subtle.decrypt(
+        { name: "AES-CBC", iv: iv },
+        aesCryptoKey,
         cipherText
       );
+
+      return JSON.parse(new TextDecoder().decode(decryptedData));
     }
 
     function renderFileList(files) {
