@@ -4,10 +4,7 @@ on:
   schedule:
     - cron: '0 * * * *' # 每小时运行一次
   workflow_dispatch: # 支持手动触发
-  push:
-    branches:
-      - main # 在 main 分支 push 时触发
-
+  
 jobs:
   generate-files:
     runs-on: ubuntu-latest
