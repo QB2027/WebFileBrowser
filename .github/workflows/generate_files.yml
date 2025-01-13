@@ -39,7 +39,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add files.json.enc encrypted_keys.json
+          git add files.json.enc
           git commit -m "Update files [skip ci]" || echo "No changes to commit"
           git push
         env:
