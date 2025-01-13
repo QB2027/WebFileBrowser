@@ -2,45 +2,14 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>解密 AES 密钥</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-    h1 {
-      text-align: center;
-      margin: 20px 0;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    input, button {
-      padding: 10px;
-      margin: 10px 0;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    pre {
-      background-color: #f8f9fa;
-      padding: 10px;
-      border: 1px solid #ddd;
-      overflow-x: auto;
-    }
-  </style>
+  <title>解密 RSA 私钥</title>
 </head>
 <body>
-  <h1>解密 AES 密钥</h1>
-  <div class="container">
-    <input type="text" id="username" placeholder="请输入用户名" />
-    <input type="password" id="password" placeholder="请输入密码" />
-    <button id="decryptButton">解密 AES 密钥</button>
-    <pre id="output"></pre>
-  </div>
+  <h1>解密 RSA 私钥</h1>
+  <input type="text" id="username" placeholder="用户名">
+  <input type="password" id="password" placeholder="密码">
+  <button id="decryptButton">解密</button>
+  <pre id="output"></pre>
 
   <script type="module">
     document.getElementById('decryptButton').addEventListener('click', async () => {
@@ -53,55 +22,32 @@
       }
 
       try {
-        // 加载用户数据
         const users = await loadUsers();
         const userData = users[username];
-
         if (!userData) {
           alert('用户名不存在');
           return;
         }
 
-        // 解密 AES 密钥
-        const aesKey = await decryptAESKey(userData.enc_aes_key, userData.priv_enc, password);
-
-        // 显示解密后的 AES 密钥
-        document.getElementById('output').textContent = `解密后的 AES 密钥: ${btoa(String.fromCharCode(...new Uint8Array(aesKey)))}`;
+        const privateKey = await decryptPrivateKey(userData.priv_enc, password);
+        document.getElementById('output').textContent = `解密后的 RSA 私钥: ${privateKey}`;
       } catch (error) {
         console.error(error);
-        document.getElementById('output').textContent = '解密失败，请检查用户名、密码和文件内容';
+        document.getElementById('output').textContent = '解密失败';
       }
     });
 
     async function loadUsers() {
       const response = await fetch('./users_enc_aes_key.json');
-      if (!response.ok) {
-        throw new Error('无法加载 users_enc_aes_key.json');
-      }
+      if (!response.ok) throw new Error('无法加载用户数据');
       return response.json();
     }
 
-    async function decryptAESKey(encAesKey, privEnc, password) {
-      // 使用密码解密加密的 RSA 私钥
-      const privateKey = await decryptPrivateKey(privEnc, password);
-
-      // 解密加密的 AES 密钥
-      const encryptedAesKeyBuffer = Uint8Array.from(atob(encAesKey), c => c.charCodeAt(0));
-      return await crypto.subtle.decrypt(
-        {
-          name: "RSA-OAEP",
-          hash: "SHA-256",
-        },
-        privateKey,
-        encryptedAesKeyBuffer
-      );
-    }
-
     async function decryptPrivateKey(privEnc, password) {
-      const encryptedPrivKeyBuffer = Uint8Array.from(atob(privEnc), c => c.charCodeAt(0));
+      const encryptedKey = Uint8Array.from(atob(privEnc), c => c.charCodeAt(0));
       const aesKey = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
-      const iv = encryptedPrivKeyBuffer.slice(0, 16);
-      const encryptedKeyData = encryptedPrivKeyBuffer.slice(16);
+      const iv = encryptedKey.slice(0, 16);
+      const keyData = encryptedKey.slice(16);
 
       const aesCryptoKey = await crypto.subtle.importKey(
         "raw",
@@ -111,19 +57,13 @@
         ["decrypt"]
       );
 
-      const decryptedPrivKey = await crypto.subtle.decrypt(
+      const decryptedKey = await crypto.subtle.decrypt(
         { name: "AES-CBC", iv: iv },
         aesCryptoKey,
-        encryptedKeyData
+        keyData
       );
 
-      return crypto.subtle.importKey(
-        "pkcs8",
-        decryptedPrivKey,
-        { name: "RSA-OAEP", hash: "SHA-256" },
-        true,
-        ["decrypt"]
-      );
+      return new TextDecoder().decode(decryptedKey);
     }
   </script>
 </body>
