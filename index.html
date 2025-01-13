@@ -36,6 +36,7 @@
 <body>
   <h1>解密 AES 密钥</h1>
   <div class="container">
+    <input type="text" id="username" placeholder="请输入用户名" />
     <input type="password" id="password" placeholder="请输入密码" />
     <button id="decryptButton">解密 AES 密钥</button>
     <pre id="output"></pre>
@@ -43,20 +44,22 @@
 
   <script type="module">
     document.getElementById('decryptButton').addEventListener('click', async () => {
+      const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
 
-      if (!password) {
-        alert('请输入密码');
+      if (!username || !password) {
+        alert('请输入用户名和密码');
         return;
       }
 
       try {
-        // 从本地文件加载用户数据
+        // 加载用户数据
         const users = await loadUsers();
-        const userData = Object.values(users)[0]; // 取第一个用户数据
+        const userData = users[username];
 
         if (!userData) {
-          throw new Error('用户数据不存在');
+          alert('用户名不存在');
+          return;
         }
 
         // 解密 AES 密钥
@@ -66,7 +69,7 @@
         document.getElementById('output').textContent = `解密后的 AES 密钥: ${btoa(String.fromCharCode(...new Uint8Array(aesKey)))}`;
       } catch (error) {
         console.error(error);
-        document.getElementById('output').textContent = '解密失败，请检查密码和文件内容';
+        document.getElementById('output').textContent = '解密失败，请检查用户名、密码和文件内容';
       }
     });
 
