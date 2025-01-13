@@ -51,8 +51,13 @@ def main():
 
     for user_id, user_data in users.items():
         public_key_b64 = user_data.get("pub")
+        private_key_enc = user_data.get("priv_enc")  # 获取加密的私钥
+
         if not public_key_b64:
             raise ValueError(f"用户 {user_id} 缺少公钥")
+
+        if not private_key_enc:
+            raise ValueError(f"用户 {user_id} 缺少加密的私钥")
 
         # 解码公钥为二进制
         public_key_der = base64.b64decode(public_key_b64)
@@ -62,7 +67,8 @@ def main():
 
         # 保存加密结果
         output_data[user_id] = {
-            "enc_aes_key": encrypted_aes_key
+            "enc_aes_key": encrypted_aes_key,
+            "priv_enc": private_key_enc  # 直接复制加密的私钥
         }
 
     # 写入加密结果到 users_enc_aes_key.json
