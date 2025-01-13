@@ -2,10 +2,10 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>解密 RSA 私钥</title>
+  <title>解密 AES 密钥</title>
 </head>
 <body>
-  <h1>解密 RSA 私钥</h1>
+  <h1>解密 AES 密钥</h1>
   <input type="text" id="username" placeholder="用户名">
   <input type="password" id="password" placeholder="密码">
   <button id="decryptButton">解密</button>
@@ -29,16 +29,14 @@
           return;
         }
 
-        const decryptedPrivateKey = await decryptPrivateKey(userData.priv_enc, password);
+        // 解密 RSA 私钥
+        const privateKey = await decryptPrivateKey(userData.priv_enc, password);
 
-        // 输出解密后的 RSA 私钥（原始 JSON 模式）
-        const output = {
-          username: username,
-          priv_key: decryptedPrivateKey,
-          enc_aes_key: userData.enc_aes_key
-        };
+        // 解密 AES 密钥
+        const aesKey = await decryptAESKey(userData.enc_aes_key, privateKey);
 
-        document.getElementById('output').textContent = JSON.stringify(output, null, 2);
+        // 输出解密后的 AES 密钥
+        document.getElementById('output').textContent = `解密后的 AES 密钥: ${arrayBufferToBase64(aesKey)}`;
       } catch (error) {
         console.error(error);
         document.getElementById('output').textContent = '解密失败';
@@ -76,7 +74,26 @@
         encryptedKeyData
       );
 
-      return arrayBufferToBase64(decryptedKey); // 原始私钥以 Base64 格式返回
+      return crypto.subtle.importKey(
+        "pkcs8",
+        decryptedKey,
+        { name: "RSA-OAEP", hash: "SHA-256" },
+        true,
+        ["decrypt"]
+      );
+    }
+
+    async function decryptAESKey(encAesKey, privateKey) {
+      const encryptedAesKeyBuffer = Uint8Array.from(atob(encAesKey), c => c.charCodeAt(0));
+
+      return await crypto.subtle.decrypt(
+        {
+          name: "RSA-OAEP",
+          hash: "SHA-256",
+        },
+        privateKey,
+        encryptedAesKeyBuffer
+      );
     }
   </script>
 </body>
