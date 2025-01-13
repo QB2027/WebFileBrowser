@@ -1,4 +1,4 @@
-name: Generate Files
+name: Generate enc JSON
 
 on:
   schedule:
