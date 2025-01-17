@@ -1,100 +1,215 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>解密 AES 密钥</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>File Browser</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    .file-list {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    .file-item, .directory-item {
+      margin: 5px 0;
+    }
+
+    .back-button a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+
+    .file-item a, .directory-item a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+
+    .password-input {
+      margin-bottom: 20px;
+    }
+
+    .error-message {
+      color: red;
+    }
+  </style>
 </head>
 <body>
-  <h1>解密 AES 密钥</h1>
-  <input type="text" id="username" placeholder="请输入用户名">
-  <input type="password" id="password" placeholder="请输入密码">
-  <button id="decryptButton">解密</button>
-  <pre id="output"></pre>
 
-  <script type="module">
-    document.getElementById('decryptButton').addEventListener('click', async () => {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
+  <div class="password-input" id="passwordInputDiv">
+    <label for="password">请输入密码:</label>
+    <input type="password" id="password" />
+    <button onclick="decryptFiles()">解密并加载文件</button>
+    <p id="error-message" class="error-message"></p>
+  </div>
 
-      if (!username || !password) {
-        alert('请输入用户名和密码');
+  <ul class="file-list">
+    <!-- 文件 / 目录 列表将由JS动态填充 -->
+  </ul>
+
+  <script>
+    let filesData = [];
+    let encryptedData = null;
+    let currentPassword = null;
+
+    // 检查是否已经存储密码
+    function checkStoredPassword() {
+      const storedPassword = localStorage.getItem('userPassword');
+      if (storedPassword) {
+        currentPassword = storedPassword;
+        document.getElementById('passwordInputDiv').style.display = 'none'; // 隐藏密码输入框
+        decryptAndLoadFiles(); // 自动解密并加载文件
+      } else {
+        document.getElementById('passwordInputDiv').style.display = 'block'; // 显示密码输入框
+      }
+    }
+
+    // 异步加载加密文件
+    async function loadEncryptedFile() {
+      const response = await fetch('./files.json.enc');
+      if (!response.ok) {
+        throw new Error('无法加载加密文件 files.json.enc');
+      }
+      encryptedData = await response.arrayBuffer();
+    }
+
+    // 解密并加载文件数据
+    async function decryptFiles() {
+      const password = document.getElementById('password').value;
+      const errorMessage = document.getElementById('error-message');
+
+      if (!password) {
+        errorMessage.textContent = "密码不能为空！";
         return;
       }
 
       try {
-        const users = await loadUsers();
-        const userData = users[username];
-        if (!userData) {
-          alert('用户名不存在');
-          return;
-        }
+        // 加载加密文件
+        await loadEncryptedFile();
 
-        // 解密 RSA 私钥
-        const privateKey = await decryptPrivateKey(userData.priv_enc, password);
+        // 解密数据
+        const decryptedData = await decryptAes256(new Uint8Array(encryptedData), password);
+        
+        // 解析解密后的 JSON 数据
+        filesData = JSON.parse(new TextDecoder().decode(decryptedData));
 
-        // 解密 AES 密钥
-        const aesKey = await decryptAESKey(userData.enc_aes_key, privateKey);
+        // 存储密码并隐藏输入框
+        localStorage.setItem('userPassword', password);
+        currentPassword = password;
+        document.getElementById('passwordInputDiv').style.display = 'none';
 
-        // 输出解密后的 AES 密钥
-        document.getElementById('output').textContent = `解密后的 AES 密钥: ${arrayBufferToBase64(aesKey)}`;
+        // 加载文件列表
+        const path = getCurrentDirectory();
+        await loadDirectory(path);
+
+        errorMessage.textContent = ''; // 清除错误消息
       } catch (error) {
-        console.error(error);
-        document.getElementById('output').textContent = `解密失败: ${error.message}`;
+        errorMessage.textContent = "解密失败，请检查密码或文件！";
       }
-    });
-
-    async function loadUsers() {
-      const response = await fetch('./users_enc_aes_key.json');
-      if (!response.ok) throw new Error('无法加载用户数据');
-      return response.json();
     }
 
-    function arrayBufferToBase64(buffer) {
-      const bytes = new Uint8Array(buffer);
-      return btoa(String.fromCharCode.apply(null, bytes));
+    // 自动解密并加载文件
+    async function decryptAndLoadFiles() {
+      try {
+        await loadEncryptedFile();
+        const decryptedData = await decryptAes256(new Uint8Array(encryptedData), currentPassword);
+        filesData = JSON.parse(new TextDecoder().decode(decryptedData));
+
+        // 加载文件列表
+        const path = getCurrentDirectory();
+        await loadDirectory(path);
+      } catch (error) {
+        console.error('解密失败', error);
+        document.getElementById('error-message').textContent = "解密失败，请检查密码或文件！";
+      }
     }
 
-    async function decryptPrivateKey(privEnc, password) {
-      const encryptedPrivKeyBuffer = Uint8Array.from(atob(privEnc), c => c.charCodeAt(0));
-      const aesKey = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
-      const iv = encryptedPrivKeyBuffer.slice(0, 16);
-      const encryptedKeyData = encryptedPrivKeyBuffer.slice(16);
+    // AES256 解密算法
+    async function decryptAes256(encryptedData, password) {
+      const aesKey = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+      const iv = encryptedData.slice(0, 16);
+      const ciphertext = encryptedData.slice(16);
 
-      const aesCryptoKey = await crypto.subtle.importKey(
-        "raw",
-        aesKey,
-        { name: "AES-CBC" },
-        false,
-        ["decrypt"]
+      const cryptoKey = await window.crypto.subtle.importKey(
+        'raw', aesKey, { name: 'AES-CBC' }, false, ['decrypt']
+      );
+      const decryptedBuffer = await window.crypto.subtle.decrypt(
+        { name: 'AES-CBC', iv: iv }, cryptoKey, ciphertext
       );
 
-      const decryptedKey = await crypto.subtle.decrypt(
-        { name: "AES-CBC", iv: iv },
-        aesCryptoKey,
-        encryptedKeyData
-      );
-
-      return crypto.subtle.importKey(
-        "pkcs8",
-        decryptedKey,
-        { name: "RSA-OAEP", hash: "SHA-256" },
-        true,
-        ["decrypt"]
-      );
+      return new Uint8Array(decryptedBuffer);
     }
 
-    async function decryptAESKey(encAesKey, privateKey) {
-      const encryptedAesKeyBuffer = Uint8Array.from(atob(encAesKey), c => c.charCodeAt(0));
-
-      return await crypto.subtle.decrypt(
-        {
-          name: "RSA-OAEP",
-          hash: "SHA-256",
-        },
-        privateKey,
-        encryptedAesKeyBuffer
-      );
+    // 获取当前目录的路径
+    function getCurrentDirectory() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('path') || '';
     }
+
+    // 获取上一级目录路径
+    function getParentPath(path) {
+      const segments = path.split('/').filter(Boolean);
+      segments.pop();
+      return segments.join('/');
+    }
+
+    // 递归过滤出指定 path 下的内容
+    function filterFilesByPath(files, path) {
+      const segments = path.split('/').filter(Boolean);
+      let current = files;
+
+      for (const segment of segments) {
+        const match = current.find(
+          (item) => item.name === segment && item.type === 'directory'
+        );
+        if (match && match.children) {
+          current = match.children;
+        } else {
+          return []; 
+        }
+      }
+      return current;
+    }
+
+    // 根据当前目录文件数据生成 HTML 列表
+    function generateFileList(files, basePath) {
+      let html = '';
+
+      files.forEach(item => {
+        if (item.type === 'file') {
+          html += `<li class="file-item"><a href="${item.path}" target="_blank">${item.name}</a></li>`;
+        } else if (item.type === 'directory') {
+          const subPath = basePath ? `${basePath}/${item.name}` : item.name;
+          html += `<li class="directory-item"><a href="?path=${subPath}">${item.name}/</a></li>`;
+        }
+      });
+
+      return html;
+    }
+
+    // 加载并渲染指定路径下的所有文件和文件夹
+    async function loadDirectory(path) {
+      const container = document.querySelector('.file-list');
+      const directoryContent = filterFilesByPath(filesData, path);
+
+      container.innerHTML = '';
+
+      if (path) {
+        const parentPath = getParentPath(path);
+        container.innerHTML += `<li class="back-button"><a href="?path=${parentPath}">../</a></li>`;
+      }
+
+      container.innerHTML += generateFileList(directoryContent, path);
+    }
+
+    // 页面初始化
+    checkStoredPassword();
+
   </script>
+
 </body>
 </html>
