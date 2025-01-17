@@ -15,17 +15,21 @@ def load_config():
         return json.load(f)
 
 
+import hashlib
+import os
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.backends import default_backend
+
 def encrypt_aes256(data, key):
     """
     使用 AES256 加密数据
     :param data: 要加密的字节数据
-    :param key: Base64 编码的 AES 密钥
+    :param key: 密钥字符串
     :return: 加密后的字节数据
     """
-    # 解码 Base64 AES 密钥
-    aes_key = base64.b64decode(key)
-    if len(aes_key) != 32:
-        raise ValueError("AES 密钥长度必须为 256 位（32 字节）")
+    # 使用 SHA-256 对输入的字符串密钥进行哈希，得到 256 位（32 字节）密钥
+    aes_key = hashlib.sha256(key.encode('utf-8')).digest()
 
     # 生成随机 IV
     iv = os.urandom(16)
@@ -43,6 +47,7 @@ def encrypt_aes256(data, key):
 
     # 返回 IV 和加密数据的组合
     return iv + encrypted_data
+
 
 
 def scan_oss_bucket(bucket, prefix="", exclude_dirs=None, exclude_files=None):

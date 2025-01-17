@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>File Browser</title>
+  <style>
+    /* 简单的 CSS 样式 */
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    .file-list {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    .file-item, .directory-item {
+      margin: 5px 0;
+    }
+
+    .back-button a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+
+    .file-item a, .directory-item a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <ul class="file-list">
+    <!-- 文件 / 目录 列表将由JS动态填充 -->
+  </ul>
+
+  <script>
+    let config = {};
+
+    // 异步加载 config.json
+    async function loadConfig() {
+      const response = await fetch('./config.json');
+      if (!response.ok) {
+        throw new Error('Failed to load config.json');
+      }
+      config = await response.json();
+    }
+
+    // 获取已加载的配置信息
+    function getConfig() {
+      return config;
+    }
+
+    // 递归过滤出指定 path 下的内容
+    function filterFilesByPath(files, path) {
+      const segments = path.split('/').filter(Boolean);
+      let current = files;
+
+      for (const segment of segments) {
+        const match = current.find(
+          (item) => item.name === segment && item.type === 'directory'
+        );
+        if (match && match.children) {
+          current = match.children;
+        } else {
+          // 如果路径不存在则返回空数组
+          return [];
+        }
+      }
+      return current;
+    }
+
+    // 根据 config.json 中的配置信息，拼出 GitHub Raw 文件 URL
+    function generateFileUrl(filePath) {
+      const { repoOwner, repoName, branch } = getConfig();
+      const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branch}`;
+      return `${baseUrl}/${filePath}`;
+    }
+
+    // 获取当前 URL 中的 ?path= 值
+    function getCurrentDirectory() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('path') || '';
+    }
+
+    // 从当前 path 中移除最后一级，得到上一级路径
+    function getParentPath(path) {
+      const segments = path.split('/').filter(Boolean);
+      segments.pop(); // 移除最后一节
+      return segments.join('/');
+    }
+
+    // 加载并渲染指定路径下的所有文件（file）和文件夹（directory）
+    async function loadDirectory(path) {
+      const response = await fetch('./files.json');
+      if (!response.ok) {
+        throw new Error('Failed to load files.json');
+      }
+      const files = await response.json();
+
+      const container = document.querySelector('.file-list');
+      const directoryContent = filterFilesByPath(files, path);
+
+      // 清空当前列表内容
+      container.innerHTML = '';
+
+      // 如果不在根目录，显示返回上一级的按钮
+      if (path) {
+        const parentPath = getParentPath(path);
+        container.innerHTML += `<li class="back-button"><a href="?path=${parentPath}">../</a></li>`;
+      }
+
+      // 生成并插入文件 / 目录列表
+      container.innerHTML += generateFileList(directoryContent, path);
+    }
+
+    // 根据当前目录文件数据生成 HTML 列表
+    function generateFileList(files, basePath) {
+      let html = '';
+
+      files.forEach(item => {
+        if (item.type === 'file') {
+          const fileUrl = generateFileUrl(item.path);
+          html += `<li class="file-item"><a href="${fileUrl}" target="_blank">${item.name}</a></li>`;
+        } else if (item.type === 'directory') {
+          const subPath = basePath ? `${basePath}/${item.name}` : item.name;
+          html += `<li class="directory-item"><a href="?path=${subPath}">${item.name}/</a></li>`;
+        }
+      });
+
+      return html;
+    }
+
+    // 初始化页面，加载配置并渲染文件目录
+    (async function init() {
+      await loadConfig();
+      const path = getCurrentDirectory();
+      await loadDirectory(path);
+    })();
+  </script>
+
+</body>
+</html>
